@@ -1,8 +1,10 @@
 language: python
+python:
+    - "3.4"
 sudo: false
 env:
     - TOX_ENV=flake8
-    - TOX_ENV=py33-pyfrc2015
+    - TOX_ENV=py34-pyfrc2015
 
 matrix:
   fast_finish: true
