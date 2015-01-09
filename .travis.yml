@@ -2,6 +2,7 @@ language: python
 sudo: false
 env:
     - TOX_ENV=flake8
+    - TOX_ENV=py33-pyfrc2015
 
 matrix:
   fast_finish: true
