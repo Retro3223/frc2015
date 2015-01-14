@@ -30,3 +30,25 @@ def normalize_joystick_axes(x, y):
     if magnitude == 0.0:
         return (0.0, 0.0)
     return (x * side / magnitude, y * side / magnitude)
+
+
+class KiwiDrive:
+    def __init__(self, joystick, motors):
+        self.joystick = joystick
+        self.tweaks = [1, -1, 1]
+        assert len(motors) == 3
+        self.motors = motors
+
+    def Drive(self):
+        self.RawDrive(
+            0.25 * self.joystick.getRawAxis(4),
+            0.25 * self.joystick.getRawAxis(1))
+
+    def RawDrive(self, x, y):
+        xy = normalize_joystick_axes(x, y)
+        motor_values = get_wheel_magnitudes(xy)
+        vals = []
+        for i, motor in enumerate(self.motors):
+            vals.append(self.tweaks[i] * motor_values[i])
+            motor.set(self.tweaks[i] * motor_values[i])
+        print (vals)
