@@ -1,9 +1,10 @@
 import numpy as np
 import math
+import wpilib
 
 
 m = np.array(
-    [[0.5, 0.0],
+    [[1.5, 0.0],
      [-1.0, -1.0 / math.sqrt(3)],
      [-1.0, 1.0 / math.sqrt(3)]])
 
@@ -35,20 +36,35 @@ def normalize_joystick_axes(x, y):
 class KiwiDrive:
     def __init__(self, joystick, motors):
         self.joystick = joystick
-        self.tweaks = [1, -1, 1]
         assert len(motors) == 3
         self.motors = motors
+        self.tweaks = [1, 1, 1]
+        self.gyro = wpilib.Gyro(0)
 
     def Drive(self):
+        x = self.joystick.getRawAxis(4)
+        if abs(x) < 0.2:
+            x = 0
+        y = self.joystick.getRawAxis(1)
+        if abs(y) < 0.2:
+            y = 0
         self.RawDrive(
-            0.25 * self.joystick.getRawAxis(4),
-            0.25 * self.joystick.getRawAxis(1))
+            0.45 * x,
+            0.45 * y)
 
     def RawDrive(self, x, y):
         xy = normalize_joystick_axes(x, y)
         motor_values = get_wheel_magnitudes(xy)
         vals = []
         for i, motor in enumerate(self.motors):
-            vals.append(self.tweaks[i] * motor_values[i])
-            motor.set(self.tweaks[i] * motor_values[i])
-        print (vals)
+            val = motor_values[i] * self.tweaks[i]
+            if val < 0:
+               val *= 0.8
+            vals.append(val)
+            motor.set(val)
+        print ("x: %s" % x)
+        print ("y: %s" % y)
+        print ("xy: %s" % (xy,))
+        print ("motor values:: %s" % (vals,))
+        print ("rot :: %s" % (self.gyro.getRate(),))
+        print ("")

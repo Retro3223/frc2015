@@ -1,0 +1,10 @@
+signal = 0.4
+clockwise:
+1: 14.87 s 10 rot
+2: 14.64 s 10 rot
+3: 14.93 s 10 rot
+
+cclockwise:
+1: 14.11 s 10 rot
+2: 14.13 s 10 rot
+3: 14.06 s 10 rot

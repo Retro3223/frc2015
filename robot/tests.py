@@ -3,7 +3,9 @@ import math
 from ddt import ddt, data
 from .kiwidrive import (
     normalize_joystick_axes,
-    get_wheel_magnitudes)
+    get_wheel_magnitudes,
+    KiwiDrive,
+)
 
 
 @ddt
@@ -54,3 +56,18 @@ class KiwidriveTests(unittest.TestCase):
                 expected_magnitudes[i],
                 magnitudes[i],
                 places=3)
+
+    def test_rawdrive(self):
+        class Motor:
+            def __init__(self):
+                self.value = -1
+            def set(self, value):
+                self.value = value
+
+
+        motors = [Motor(), Motor(), Motor()]
+        kiwidrive = KiwiDrive(None, motors)
+        kiwidrive.RawDrive(0.0, 1.0)
+        self.assertAlmostEqual(0.0, motors[0].value, places=3)
+        self.assertAlmostEqual(0.57735, motors[1].value, places=3)
+        self.assertAlmostEqual(0.57735, motors[2].value, places=3)
