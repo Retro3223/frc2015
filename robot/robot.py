@@ -37,7 +37,7 @@ class Robot(wpilib.IterativeRobot):
             self.motor1.set(0)
             self.motor2.set(0)
             self.motor3.set(0)
-        #print (self.kiwidrive.gyro.getRate())
+        print (self.kiwidrive.gyro.getAngle())
     def testPeriodic(self):
         pass
 
