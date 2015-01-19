@@ -7,7 +7,12 @@ class Robot(wpilib.IterativeRobot):
         self.joystick1 = wpilib.Joystick(0)
         self.xbox = XboxController(self.joystick1)
         self.motor0 = wpilib.Jaguar(0)
-        #self.motor2 = wpilib.Jaguar(1)
+        self.motor1 = wpilib.Jaguar(1)
+        self.robotdrive = wpilib.RobotDrive(self.motor0, self.motor1)
+        self.robotdrive.setInvertedMotor(
+            wpilib.RobotDrive.MotorType.kRearLeft, True)
+        self.robotdrive.setInvertedMotor(
+            wpilib.RobotDrive.MotorType.kRearRight, True)
 
     def autonomousInit(self):
         pass
@@ -16,10 +21,10 @@ class Robot(wpilib.IterativeRobot):
         pass
 
     def teleopPeriodic(self):
-        if self.xbox.A():
-            self.motor0.set(0.5)
-        else:
-            self.motor0.set(0)
+        self.robotdrive.drive(
+            self.xbox.left_joystick_axis_v(),
+            self.xbox.left_joystick_axis_h(),
+        )
 
     def testPeriodic(self):
         pass
