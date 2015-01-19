@@ -23,7 +23,7 @@ class Robot(wpilib.IterativeRobot):
         pass
 
     def teleopPeriodic(self):
-        #self.kiwidrive.Drive()
+        self.kiwidrive.Drive()
 
         if self.xbox.right_trigger():
             self.motor1.set(0.1)
@@ -33,11 +33,7 @@ class Robot(wpilib.IterativeRobot):
             self.motor1.set(-0.1)
             self.motor2.set(-0.1)
             self.motor3.set(-0.1)
-        else:
-            self.motor1.set(0)
-            self.motor2.set(0)
-            self.motor3.set(0)
-        print (self.kiwidrive.gyro.getAngle())
+        #print (self.kiwidrive.gyro.getAngle())
     def testPeriodic(self):
         pass
 

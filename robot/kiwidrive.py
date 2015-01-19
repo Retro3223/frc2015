@@ -1,15 +1,16 @@
-import numpy as np
 import math
 import wpilib
+try:
+    import numpy as np
+    M = np.array(
+        [[0.5, 0.0],
+         [-1.0, -1.0 / math.sqrt(3)],
+         [-1.0, 1.0 / math.sqrt(3)]])
+except ImportError:
+    print("no numpy, hope you aren't trying to use kiwidrive")
 
 
-m = np.array(
-    [[1.5, 0.0],
-     [-1.0, -1.0 / math.sqrt(3)],
-     [-1.0, 1.0 / math.sqrt(3)]])
-
-
-def get_wheel_magnitudes(v):
+def get_wheel_magnitudes(v, m=M):
     """
     Calculate the magnitudes to drive wheels 1, 2, and 3
     to drive the robot in the direction defined by normalized
@@ -40,6 +41,22 @@ class KiwiDrive:
         self.motors = motors
         self.tweaks = [1, 1, 1]
         self.gyro = wpilib.Gyro(0)
+        self.m = np.copy(M)
+        self.m[0][0] = 1.5
+        self.pid_correction = 0.0
+        self.pidcontroller = wpilib.PIDController(
+            0.001,
+            0.001,
+            0.001,
+            1,
+            lambda: self.gyro.pidGet(),
+            lambda output: self.pidWrite(output),
+            0.5,
+        )
+        self.pidcontroller.setSetpoint(0.0)
+        self.pidcontroller.setAbsoluteTolerance(2)
+        self.pidcontroller.enable()
+
 
     def Drive(self):
         x = self.joystick.getRawAxis(4)
@@ -54,17 +71,15 @@ class KiwiDrive:
 
     def RawDrive(self, x, y):
         xy = normalize_joystick_axes(x, y)
-        motor_values = get_wheel_magnitudes(xy)
+        motor_values = get_wheel_magnitudes(xy, self.m)
         vals = []
         for i, motor in enumerate(self.motors):
             val = motor_values[i] * self.tweaks[i]
             if val < 0:
-               val *= 0.8
+                val *= 0.8
+            val += self.pid_correction
             vals.append(val)
             motor.set(val)
-        print ("x: %s" % x)
-        print ("y: %s" % y)
-        print ("xy: %s" % (xy,))
-        print ("motor values:: %s" % (vals,))
-        print ("rot :: %s" % (self.gyro.getRate(),))
-        print ("")
+    def pidWrite(self, output):
+        print ("pid output: ", output)
+        self.pid_correction = output
