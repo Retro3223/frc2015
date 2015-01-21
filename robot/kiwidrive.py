@@ -43,6 +43,7 @@ class KiwiDrive:
         self.gyro = wpilib.Gyro(0)
         self.m = np.copy(M)
         self.m[0][0] = 1.5
+        self.motor_bias = 0.8;
         self.pid_correction = 0.0
         self.pidcontroller = wpilib.PIDController(
             0.001,
@@ -76,7 +77,7 @@ class KiwiDrive:
         for i, motor in enumerate(self.motors):
             val = motor_values[i] * self.tweaks[i]
             if val < 0:
-                val *= 0.8
+                val *= self.motor_bias
             val += self.pid_correction
             vals.append(val)
             motor.set(val)
