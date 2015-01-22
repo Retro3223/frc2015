@@ -56,7 +56,7 @@ class KiwiDrive:
         self.last_angle_count = 0
         self.waiting_to_reenable = False
         self.pidcontroller = wpilib.PIDController(
-            0.001,
+            0.015,
             0.0,
             0.0,
             .1,
