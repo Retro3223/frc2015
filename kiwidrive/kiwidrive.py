@@ -20,6 +20,12 @@ def get_wheel_magnitudes(v, m=None):
     if m is None:
         m = M
     return np.dot(m, v)
+def get_wheel_magnitudes2(x, y):
+	result = [0,0,0]
+	result[0] = -1.28 * x;
+	result[1] = 0.8 * x + -0.75 * y
+	result[2] = 0.8 * x +  0.75 * y
+	return result
 
 
 def normalize_joystick_axes(x, y):
@@ -86,8 +92,8 @@ class KiwiDrive:
         # rot is +1.0 for right trigger, -1.0 for left
         rot = self.xbox.right_trigger() + -self.xbox.left_trigger();
         self.RawDrive(
-            0.45 * x,
-            0.45 * y,
+            x,
+            y,
             rot)
 
     def RawDrive(self, x, y, rot):
@@ -111,9 +117,6 @@ class KiwiDrive:
                 print ("REENABLING")
         self.last_angle = self.getAngle()
         self.last_rot = rot
-        print (" gyro: %s" % self.getAngle())
-        print (" setp: %s" % self.pidcontroller.getSetpoint())
-        print (" corr: %s" % self.pid_correction)
         for i, motor in enumerate(self.motors):
             val = motor_values[i] * self.tweaks[i]
             val += rot * .3

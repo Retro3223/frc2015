@@ -19,6 +19,7 @@ class Robot(wpilib.IterativeRobot):
             wpilib.RobotDrive.MotorType.kRearLeft, False)
         self.robotdrive.setInvertedMotor(
             wpilib.RobotDrive.MotorType.kRearRight, False)
+        self.winch_motor = wpilib.Talon(2)
 
     def autonomousInit(self):
         pass
@@ -27,15 +28,18 @@ class Robot(wpilib.IterativeRobot):
         pass
 
     def teleopPeriodic(self):
-        f = step(
-            self.xbox.left_joystick_axis_v(),
+        x = step(
+            self.xbox.right_joystick_axis_v(),
             0.2,
         )
-        h = step(
+        y = step(
             self.xbox.left_joystick_axis_h(),
-            0.2,
+            -0.2,
         )
-        self.robotdrive.arcadeDrive(f, h)
+        self.robotdrive.arcadeDrive(x, y)
+        # winch motor
+        self.winch_motor.set(0.2 * (self.xbox.right_trigger()+self.xbox.left_trigger())
+        
 
     def testPeriodic(self):
         pass
