@@ -7,6 +7,11 @@ def step(value, min):
         value = 0
     return value
 
+def step_range(value, min, max, default):
+    if not (min <= value <= max):
+        value = default
+    return value
+
 
 class Robot(wpilib.IterativeRobot):
     def robotInit(self):
@@ -34,20 +39,94 @@ class Robot(wpilib.IterativeRobot):
         self.x_pressed_last = False
         self.ultra0 = wpilib.AnalogInput(0)
         self.ultra1 = wpilib.AnalogInput(1)
+        self.optical1 = wpilib.DigitalInput(3)
+        self.auto_mode = "tote"
+        self.dog = wpilib.MotorSafety()
+        self.dog.setSafetyEnabled(False)
+        self.dog.setExpiration(1.75)
 
 
     def autonomousInit(self):
-        pass
+        self.auto_state = "start"
+        self.positioned_count = 0
 
     def autonomousPeriodic(self):
+        self.dog.feed()
+        if self.auto_mode == "container":
+            self.autoContainerPeriodic()
+        elif self.auto_mode == "tote":
+            self.autoTotePeriodic()
+
+    def autoContainerPeriodic(self):
         pass
+
+    def autoTotePeriodic(self):
+        if self.auto_state == "start":
+            right_dist = step_range(self.ultra0.getValue(), 50, 200, 200)
+            left_dist = step_range(self.ultra1.getValue(), 50, 200, 200)
+            if right_dist < 70 and left_dist < 70:
+                self.auto_state = "positioned"
+            elif right_dist >= 70 and left_dist < 70:
+                val1 = (0.5 * abs(right_dist - 70) / 200.0)
+                if abs(val1) < 0.2:
+                    val1 = 0.2
+                val0 = 0.0
+                print (val0, val1)
+                self.motor0.set(val0)
+                self.motor1.set(val1)
+            elif right_dist < 70 and left_dist >= 70:
+                val0 = 0.0
+                val1 = (0.5 * abs(left_dist - 70) / 200.0)
+                if abs(val1) < 0.2:
+                    val1 = 0.2
+                self.motor0.set(val0)
+                self.motor1.set(val1)
+            else:
+                val0 = (-0.5 * abs(right_dist - 70) / 200.0)
+                if abs(val0) < 0.2:
+                    val0 = -0.2
+                val1 = (0.5 * abs(left_dist - 70) / 200.0)
+                if abs(val1) < 0.2:
+                    val1 = 0.2
+                self.motor0.set(val0)
+                self.motor1.set(val1)
+        elif self.auto_mode == "positioned":
+            self.positioned_count += 1
+            self.winch_set(0.5);
+            if self.positioned_count > 40:
+                self.claw_up()
+
+    def set_claw(self):
+        self.solenoid1.set(not self.claw_state)
+        self.solenoid2.set(self.claw_state)
+
+    def claw_up(self):
+        self.claw_state = False
+
+    def claw_down(self):
+        self.claw_state = True
+
+    def winch_set(self, winch_signal):
+        """
+        winch_signal=0 -> maintain winch position
+        winch_signal>0 -> winch up?
+        winch_signal<0 -> winch down?
+        """
+        revs = -self.winch_encoder.get()
+        if not (self.xbox.A() and self.xbox.B()):
+            if winch_signal > 0.1 and revs >= 1170:
+                winch_signal = 0
+            if winch_signal < -0.1 and revs <= 8:
+                winch_signal = 0
+        val = 0.5 * winch_signal + .1
+        self.winch_motor.set(val)
 
     def teleopInit(self):
         self.compressor.start()
 
     def teleopPeriodic(self):
         x = step(
-            self.xbox.right_joystick_axis_v(),
+            self.xbox.left_joystick_axis_v(),
             0.2,
         )
         y = step(
@@ -60,19 +139,17 @@ class Robot(wpilib.IterativeRobot):
         a_y = self.accel.getY()
         self.a_y_sum += a_y
         self.a_y_count += 1
-        self.robotdrive.arcadeDrive(x, y)
+        self.robotdrive.arcadeDrive(x, -y)
         # winch motor
-        revs = -self.winch_encoder.get()
         winch_signal = self.xbox.right_trigger() + -self.xbox.left_trigger()
-        if winch_signal > 0.1 and revs >= 1170:
-            winch_signal = 0
-        if winch_signal < -0.1 and revs <= 8:
-            winch_signal = 0
-        self.winch_motor.set(0.5 * winch_signal + .1)
+        self.winch_set(winch_signal)
         if self.xbox.A():
             print ('x sum: ', self.a_x_sum, ' x count: ', self.a_x_count)
             print ('y sum: ', self.a_y_sum, ' y count: ', self.a_y_count)
+        if self.xbox.A() and self.xbox.Y():
+            self.winch_encoder.reset()
         if self.xbox.B():
+            revs = -self.winch_encoder.get()
             print ('revs: ', revs)
 
         if self.xbox.X():
@@ -81,15 +158,16 @@ class Robot(wpilib.IterativeRobot):
             self.x_pressed_last = False
             self.claw_state = not self.claw_state
 
-        self.solenoid1.set(not self.claw_state)
-        self.solenoid2.set(self.claw_state)
+        self.set_claw()
 
         if self.xbox.Y():
             print ("ultra0: ", self.ultra0.getValue())
             print ("ultra1: ", self.ultra1.getValue())
+            print ("optical1: ", self.optical1.get())
 
     def testPeriodic(self):
         pass
+
     def disabledPeriodic(self):
         self.compressor.stop()
 
