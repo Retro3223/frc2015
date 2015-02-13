@@ -1,5 +1,4 @@
 import wpilib
-from xbox import XboxController
 
 
 def step(value, min):
@@ -16,7 +15,7 @@ def step_range(value, min, max, default):
 class Robot(wpilib.IterativeRobot):
     def robotInit(self):
         self.joystick1 = wpilib.Joystick(0)
-        self.xbox = XboxController(self.joystick1)
+        self.joystick2 = wpilib.Joystick(1)
         self.motor0 = wpilib.Jaguar(0)
         self.motor1 = wpilib.Jaguar(1)
         self.robotdrive = wpilib.RobotDrive(self.motor0, self.motor1)
@@ -113,7 +112,7 @@ class Robot(wpilib.IterativeRobot):
         winch_signal<0 -> winch down?
         """
         revs = -self.winch_encoder.get()
-        if not (self.xbox.A() and self.xbox.B()):
+        if not (self.joystick1.getRawButton(3) and self.joystick1.getRawButton(1)):
             if winch_signal > 0.1 and revs >= 1170:
                 winch_signal = 0
             if winch_signal < -0.1 and revs <= 8:
@@ -126,11 +125,11 @@ class Robot(wpilib.IterativeRobot):
 
     def teleopPeriodic(self):
         x = step(
-            self.xbox.left_joystick_axis_v(),
+            self.joystick1.getRawAxis(1),
             0.2,
         )
         y = step(
-            self.xbox.left_joystick_axis_h(),
+            self.joystick2.getRawAxis(1),
             -0.2,
         )
         a_x = self.accel.getX()
@@ -139,20 +138,20 @@ class Robot(wpilib.IterativeRobot):
         a_y = self.accel.getY()
         self.a_y_sum += a_y
         self.a_y_count += 1
-        self.robotdrive.arcadeDrive(x, -y)
+        self.robotdrive.tankDrive(self.joystick1, self.joystick2)
         # winch motor
-        winch_signal = self.xbox.right_trigger() + -self.xbox.left_trigger()
+        winch_signal = self.joystick2.getRawButton(3) + -self.joystick2.getRawButton(2)
         self.winch_set(winch_signal)
-        if self.xbox.A():
+        if self.joystick1.getRawButton(3):
             print ('x sum: ', self.a_x_sum, ' x count: ', self.a_x_count)
             print ('y sum: ', self.a_y_sum, ' y count: ', self.a_y_count)
-        if self.xbox.A() and self.xbox.Y():
+        if self.joystick1.getRawButton(2) and self.joystick1.getRawButton(3):
             self.winch_encoder.reset()
-        if self.xbox.B():
+        if self.joystick1.getRawButton(1):
             revs = -self.winch_encoder.get()
             print ('revs: ', revs)
 
-        if self.xbox.X():
+        if self.joystick2.getRawButton(1):
             self.x_pressed_last = True
         elif self.x_pressed_last:
             self.x_pressed_last = False
@@ -160,7 +159,7 @@ class Robot(wpilib.IterativeRobot):
 
         self.set_claw()
 
-        if self.xbox.Y():
+        if self.joystick1.getRawButton(2):
             print ("ultra0: ", self.ultra0.getValue())
             print ("ultra1: ", self.ultra1.getValue())
             print ("optical1: ", self.optical1.get())
