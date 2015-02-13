@@ -24,6 +24,7 @@ class Robot(wpilib.IterativeRobot):
         self.robotdrive.setInvertedMotor(
             wpilib.RobotDrive.MotorType.kRearRight, False)
         self.winch_motor = wpilib.Talon(2)
+        self.arm_motor = wpilib.Talon(3)
         self.accel = wpilib.BuiltInAccelerometer()
         self.a_x_sum = 0.0
         self.a_x_count = 0
@@ -112,7 +113,7 @@ class Robot(wpilib.IterativeRobot):
         winch_signal<0 -> winch down?
         """
         revs = -self.winch_encoder.get()
-        if not (self.joystick1.getRawButton(3) and self.joystick1.getRawButton(1)):
+        if not (self.joystick2.getRawButton(4)):
             if winch_signal > 0.1 and revs >= 1170:
                 winch_signal = 0
             if winch_signal < -0.1 and revs <= 8:
@@ -138,16 +139,18 @@ class Robot(wpilib.IterativeRobot):
         a_y = self.accel.getY()
         self.a_y_sum += a_y
         self.a_y_count += 1
-        self.robotdrive.tankDrive(self.joystick1, self.joystick2)
+        self.robotdrive.tankDrive(x, y)
         # winch motor
         winch_signal = self.joystick2.getRawButton(3) + -self.joystick2.getRawButton(2)
         self.winch_set(winch_signal)
-        if self.joystick1.getRawButton(3):
+        arm_signal = self.joystick1.getRawButton(3) + -self.joystick1.getRawButton(2)
+        self.arm_motor.set(0.3 * arm_signal)
+        if self.joystick1.getRawButton(8):
             print ('x sum: ', self.a_x_sum, ' x count: ', self.a_x_count)
             print ('y sum: ', self.a_y_sum, ' y count: ', self.a_y_count)
-        if self.joystick1.getRawButton(2) and self.joystick1.getRawButton(3):
+        if self.joystick2.getRawButton(5):
             self.winch_encoder.reset()
-        if self.joystick1.getRawButton(1):
+        if self.joystick1.getRawButton(9):
             revs = -self.winch_encoder.get()
             print ('revs: ', revs)
 
@@ -159,7 +162,7 @@ class Robot(wpilib.IterativeRobot):
 
         self.set_claw()
 
-        if self.joystick1.getRawButton(2):
+        if self.joystick1.getRawButton(10):
             print ("ultra0: ", self.ultra0.getValue())
             print ("ultra1: ", self.ultra1.getValue())
             print ("optical1: ", self.optical1.get())
