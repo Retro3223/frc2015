@@ -11,6 +11,7 @@ def test_robot1():
     robot.winch_motor = Mock(robot.winch_motor)
     robot.winch_motor.set = Mock()
     robot.winch_set(-0.5)
+    robot.winch_motor.set.assert_called_with(-0.25)
     robot.winch_encoder.get.return_value = -10
     robot.winch_set(0.0)
     assert robot.winch_setpoint == 10
