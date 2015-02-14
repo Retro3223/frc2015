@@ -282,7 +282,7 @@ class Robot(wpilib.IterativeRobot):
     def winch_set(self, winch_signal):
         """
         Set winch controller safely by taking max and min encoder values into account
-        (unless you're pressing the override button)
+        (unless you're pressing the override button - right joystick, button 6)
 
         winch_signal=0 -> maintain winch position
         winch_signal>0 -> winch up?
@@ -291,12 +291,9 @@ class Robot(wpilib.IterativeRobot):
         revs = -self.winch_encoder.get()
         if self.last_winch_signal != 0 and winch_signal == 0:
             self.winch_setpoint = revs
-            print ('new setpoint: ', self.winch_setpoint)
-        #Right joystick 6 allows encoder override
+        self.last_winch_signal = winch_signal
         if winch_signal == 0:
-            #self.winch_motor.set(0.1)
-            val = 0.1 + (-0.01 * (revs - self.winch_setpoint))
-            print (val)
+            val = 0.1 - 0.01 * (revs - self.winch_setpoint)
             self.winch_motor.set(val)
         else:
             if not (self.right_joystick.getRawButton(6)):
@@ -305,9 +302,7 @@ class Robot(wpilib.IterativeRobot):
                 if winch_signal < -0.1 and revs <= 8:
                     winch_signal = 0
             val = 0.5 * winch_signal
-            print (val)
             self.winch_motor.set(val)
-        self.last_winch_signal = winch_signal
 
 
 if __name__ == "__main__":
