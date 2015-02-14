@@ -1,6 +1,5 @@
 import wpilib
 
-
 def step(value, min):
     if abs(value) < min:
         value = 0
@@ -47,7 +46,7 @@ class Robot(wpilib.IterativeRobot):
         self.a_y_count = 0
         
         #Initialize the gyro
-        self.gyro = wpilib.Gyro(2)
+        self.gyro = wpilib.Gyro(0)
         
         #Initialize the winch encoder
         self.winch_encoder = wpilib.Encoder(1,2)
@@ -60,8 +59,8 @@ class Robot(wpilib.IterativeRobot):
         self.solenoid2 = wpilib.Solenoid(2)
         
         #Initialize the ultrasonic sensors
-        self.left_ultrasonic_sensor = wpilib.AnalogInput(0)
-        self.right_ultrasonic_sensor = wpilib.AnalogInput(1)
+        self.left_ultrasonic_sensor = wpilib.AnalogInput(1)
+        self.right_ultrasonic_sensor = wpilib.AnalogInput(2)
         
         #Initialize the optical sensors
         self.left_optical_sensor = wpilib.DigitalInput(3)
@@ -156,7 +155,7 @@ class Robot(wpilib.IterativeRobot):
         
         #Fuzzy match where if the left and right joysticks are moved about the same,
         #    then it moves the tankDrive the average of the two values
-        if math.abs(left - right) < .1 :
+        if abs(left - right) < .1 :
             left = right = (left + right) / 2.0
         
         #Feed joystick values into drive system
