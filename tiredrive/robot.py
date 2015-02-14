@@ -47,7 +47,7 @@ class Robot(wpilib.IterativeRobot):
         self.a_y_count = 0
         
         #Initialize the gyro
-        self.gyro = wpilib.Gyro(0)
+        self.gyro = wpilib.Gyro(2)
         
         #Initialize the winch encoder
         self.winch_encoder = wpilib.Encoder(1,2)
@@ -183,12 +183,14 @@ class Robot(wpilib.IterativeRobot):
         
         #If the right joystick slider is down, go to test mode
         if self.right_joystick.getRawAxis(2) < 0:
-            testPeriodic()
+            testMode()
         
 
-    
+    def testPeriodic():
+	    pass
+		
     #Test Mode
-    def testPeriodic(self):
+    def testMode(self):
         #Calculate x and y distance travelled using accelerometer
         a_x = self.accel.getX()
         self.a_x_sum += a_x
