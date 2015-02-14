@@ -169,6 +169,10 @@ class Robot(wpilib.IterativeRobot):
         #Feed joystick values into drive system
         self.robotdrive.tankDrive(left, right)
 
+        #Reset winch encoder value to 0 if right button 7 is pressed
+        if self.right_joystick.getRawButton(7):
+            self.winch_encoder.reset()
+
         #Feed winch controller raw values from the joystick
         #Right joystick button 3 raises winch, button 2 lowers winch
         winch_signal = self.right_joystick.getRawButton(3) + -self.right_joystick.getRawButton(2)
@@ -193,10 +197,11 @@ class Robot(wpilib.IterativeRobot):
             self.winch_encoder.reset()
 
         #If the right joystick slider is down, go to test mode
-        if self.right_joystick.getRawAxis(2) > 0.5:
+        #print('slider: ' +  self.right_joystick.getRawAxis(2))
+        if self.right_joystick.getRawAxis(2) > .5:
             self.testMode()
 
-
+    #Required method for robotpy
     def testPeriodic():
         pass
 
@@ -244,8 +249,6 @@ class Robot(wpilib.IterativeRobot):
         if self.right_joystick.getRawButton(6):
             revs = -self.winch_encoder.get()
             print ('revs: ', revs)
-
-
         #Print current gyro value if left button 8 is pressed
         if self.left_joystick.getRawButton(8):
             angle = self.gyro.getAngle()
