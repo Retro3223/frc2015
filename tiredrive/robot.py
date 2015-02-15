@@ -149,25 +149,17 @@ class Robot(wpilib.IterativeRobot):
         self.compressor.start()
 
     def teleopPeriodic(self):
-        #Set "left" and "right" variables to the left and right
-        #joystick outputs provided they are more than "threshold"
-        joystick_threshold = 0.2
-        left = step(
-            self.left_joystick.getRawAxis(1),
-            joystick_threshold,
-        )
-        right = step(
-            self.right_joystick.getRawAxis(1),
-            -joystick_threshold,
-        )
-
-        #Fuzzy match where if the left and right joysticks are moved about the same,
-        #    then it moves the tankDrive the average of the two values
-        if abs(left - right) < .1 :
-            left = right = (left + right) / 2.0
+        #If left trigger pulled, run brake algorithm, otherwise use joystick values to drive
+        if self.left_joystick.getRawButton(1):
+            rotation_values = self.brake_rotation()
+            linear_values = self.brake_linear()
+            left_wheel = rotation_values[0] + linear_values[0]
+            right_wheel = rotation_values[1] + linear_values[1]
+        else:
+            left_wheel, right_wheel = self.drive_values()
 
         #Feed joystick values into drive system
-        self.robotdrive.tankDrive(left, right)
+        self.robotdrive.tankDrive(left_wheel, right_wheel)
 
         #Reset winch encoder value to 0 if right button 7 is pressed
         if self.right_joystick.getRawButton(7):
@@ -263,6 +255,37 @@ class Robot(wpilib.IterativeRobot):
         self.compressor.stop()
 
     #Helper Functions
+
+    #Set "left" and "right" variables to the left and right
+    #joystick outputs provided they are more than "threshold"
+    def drive_values(self):
+        joystick_threshold = 0.2
+        left = step(
+            self.left_joystick.getRawAxis(1),
+            joystick_threshold,
+        )
+        right = step(
+            self.right_joystick.getRawAxis(1),
+            -joystick_threshold,
+        )
+        
+        #Fuzzy match where if the left and right joysticks are moved about the same,
+        #    then it moves the tankDrive the average of the two values
+        if abs(left - right) < .1 :
+            left = right = (left + right) / 2.0
+            
+        return (left, right)
+
+    def brake_rotation(self):
+        gyro_rate = self.gyro.getRate()
+        wheel_rotation = gyro_rate * .1
+        return (wheel_rotation, -wheel_rotation)
+
+    def brake_linear(self):
+        accel_y = self.accel.getY()
+        wheel_motion = accel_y * .1
+        return (-wheel_motion, -wheel_motion)
+        
     def set_claw(self):
         self.solenoid1.set(not self.claw_state)
         self.solenoid2.set(self.claw_state)
@@ -303,6 +326,8 @@ class Robot(wpilib.IterativeRobot):
                     winch_signal = 0
             val = 0.5 * winch_signal
             self.winch_motor.set(val)
+        
+
 
 
 if __name__ == "__main__":
