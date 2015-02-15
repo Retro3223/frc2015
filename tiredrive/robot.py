@@ -80,7 +80,10 @@ class Robot(wpilib.IterativeRobot):
         self.dog.setExpiration(1.75)
 
         #Set run variables
-        self.auto_mode = "tote"
+        self.auto_mode = "container"
+        self.auto_counter = 0
+        self.auto_state = 1
+        
         self.claw_state = True
         self.x_pressed_last = False
 
@@ -99,7 +102,40 @@ class Robot(wpilib.IterativeRobot):
     #Autonomous mode for picking up recycling containers
     #Note: run variable "auto_mode" should be set to "container"
     def autoContainerPeriodic(self):
-        pass
+        # state 1: lift up to pick up container
+        if self.auto_state == 1 and -self.winch_encoder.get() < 500:
+            self.winch_motor.set(.5)
+        elif self.auto_state == 1:
+            self.auto_state = 2
+            
+        # state 2: fire right trigger - push out solenoid
+        if self.auto_state == 2:
+            self.claw_up()
+            self.set_claw()
+            self.auto_state = 3
+			self.auto_counter = 0
+            
+        # state 3: drive backward over the bump
+        if self.auto_state == 3 and self.auto_counter < 500: # 500 is an arbitrary test value, needs to be tested in IRL
+            self.robotdrive.tankDrive(-1, -1)
+            self.auto_counter += 1
+        elif self.auto_state == 3:
+            self.auto_state = 4
+        
+        # state 4: set container down
+        if self.auto_state == 4 and -self.winch_encoder.get() > 10:
+            self.winch_motor.set(-.5)
+        elif self.auto_state == 4:
+            self.auto_state = 5
+			self.auto_counter = 0
+        
+        # state 5: back up
+        if self.auto_state == 5 and self.auto_counter < 5:
+            self.robotdrive.tankDrive(-1, -1)
+            self.auto_counter += 1
+        elif self.auto_state == 5:
+            self.auto_state = 6
+        
 
     def autoTotePeriodic2(self):
         while not (self.left_claw_whisker() and self.right_claw_whisker()):
@@ -268,12 +304,12 @@ class Robot(wpilib.IterativeRobot):
             self.right_joystick.getRawAxis(1),
             -joystick_threshold,
         )
-        
+
         #Fuzzy match where if the left and right joysticks are moved about the same,
         #    then it moves the tankDrive the average of the two values
         if abs(left - right) < .1 :
             left = right = (left + right) / 2.0
-            
+
         return (left, right)
 
     def brake_rotation(self):
@@ -285,7 +321,7 @@ class Robot(wpilib.IterativeRobot):
         accel_y = self.accel.getY()
         wheel_motion = accel_y * .1
         return (-wheel_motion, -wheel_motion)
-        
+
     def set_claw(self):
         self.solenoid1.set(not self.claw_state)
         self.solenoid2.set(self.claw_state)
@@ -326,7 +362,7 @@ class Robot(wpilib.IterativeRobot):
                     winch_signal = 0
             val = 0.5 * winch_signal
             self.winch_motor.set(val)
-        
+
 
 
 
