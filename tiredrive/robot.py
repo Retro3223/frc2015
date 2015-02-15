@@ -52,7 +52,6 @@ class Robot(wpilib.IterativeRobot):
 
         #Initialize the winch encoder
         self.winch_encoder = wpilib.Encoder(1,2)
-        self.winch_setpoint = -self.winch_encoder.get()
 
         #Initialize the compressor
         self.compressor = wpilib.Compressor(0)
@@ -70,7 +69,6 @@ class Robot(wpilib.IterativeRobot):
         self.right_optical_sensor = wpilib.DigitalInput(4)
 
         #Initialize the limit switches
-        print ("ofoof")
         self.left_limit_switch = wpilib.DigitalInput(6)
         self.right_limit_switch = wpilib.DigitalInput(5)
 
@@ -88,24 +86,90 @@ class Robot(wpilib.IterativeRobot):
     def autonomousInit(self):
         self.auto_state = "start"
         self.positioned_count = 0
+        if self.auto_mode == "container":
+            pass
+            #self.autoContainerPeriodic()
+        elif self.auto_mode == "tote":
+            self.auto = iter(self.autoTotePeriodic2())
 
     def autonomousPeriodic(self):
         self.dog.feed()
-        if self.auto_mode == "container":
-            self.autoContainerPeriodic()
-        elif self.auto_mode == "tote":
-            self.autoTotePeriodic()
+        self.auto.__next__()
 
     #Autonomous mode for picking up recycling containers
     #Note: run variable "auto_mode" should be set to "container"
     def autoContainerPeriodic(self):
         pass
 
+    def turnBackLeft(self):
+        angle0 = self.gyro.getAngle()
+        settle_count = 0
+        while True:
+            angle = self.gyro.getAngle()
+            anglediff = (angle0 + 90) - self.gyro.getAngle()
+            if abs(anglediff) < 3:
+                settle_count += 1
+            else:
+                settle_count = 0
+            if settle_count > 20:
+                break
+            val = -0.08 * anglediff
+            if val > 0.5: val = 0.5
+            if val < -0.5: val = -0.5
+            self.left_motor.set(0)
+            self.right_motor.set(val)
+            yield
+
+    def turnForwardLeft(self):
+        angle0 = self.gyro.getAngle()
+        settle_count = 0
+        while True:
+            angle = self.gyro.getAngle()
+            anglediff = (angle0 - 90) - self.gyro.getAngle()
+            if abs(anglediff) < 3:
+                settle_count += 1
+            else:
+                settle_count = 0
+            if settle_count > 20:
+                break
+            val = -0.08 * anglediff
+            if val > 0.5: val = 0.5
+            if val < -0.5: val = -0.5
+            self.left_motor.set(0)
+            self.right_motor.set(val)
+            yield
+
     def autoTotePeriodic2(self):
+        """
+        for i in range(20):
+            self.forward(-0.5)
+            yield
+        """
+        angle0 = self.gyro.getAngle()
+        for x in self.turnBackLeft():
+            yield
+        for i in range(140):
+            self.forward(0.5)
+            yield
+        for i in range(15):
+            self.forward(-0.5)
+            yield
+        for x in self.turnForwardLeft():
+            yield
+        while True:
+            self.forward(0)
+            yield
+        """
         while not (self.left_claw_whisker() and self.right_claw_whisker()):
             if not self.left_claw_whisker() and not self.right_claw_whisker():
                 pass
             yield
+        """
+
+    def forward(self, val):
+        self.left_motor.set(-val)
+        self.right_motor.set(val)
+
     #Autonomous mode for picking up totes
     #Note: run variable "auto_mode" should be set to "tote"
     def autoTotePeriodic(self):
@@ -146,7 +210,8 @@ class Robot(wpilib.IterativeRobot):
 
     #Teleop Mode
     def teleopInit(self):
-        self.compressor.start()
+        self.winch_setpoint = -self.winch_encoder.get()
+        #self.compressor.start()
 
     def teleopPeriodic(self):
         #Set "left" and "right" variables to the left and right
