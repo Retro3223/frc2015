@@ -113,7 +113,7 @@ class Robot(wpilib.IterativeRobot):
             self.claw_up()
             self.set_claw()
             self.auto_state = 3
-			self.auto_counter = 0
+            self.auto_counter = 0
             
         # state 3: drive backward over the bump
         if self.auto_state == 3 and self.auto_counter < 500: # 500 is an arbitrary test value, needs to be tested in IRL
@@ -127,7 +127,7 @@ class Robot(wpilib.IterativeRobot):
             self.winch_motor.set(-.5)
         elif self.auto_state == 4:
             self.auto_state = 5
-			self.auto_counter = 0
+            self.auto_counter = 0
         
         # state 5: back up
         if self.auto_state == 5 and self.auto_counter < 5:
