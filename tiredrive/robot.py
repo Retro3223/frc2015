@@ -1,7 +1,4 @@
-try:
-    import wpilib
-except ImportError:
-    from pyfrc import wpilib
+import wpilib
 
 
 # Returns "value" unless its less than "min", then it returns 0
@@ -235,7 +232,7 @@ class Robot(wpilib.IterativeRobot):
             self.test_mode()
 
     # Robotpy's broken test mode
-    def testPeriodic():
+    def testPeriodic(self):
         pass
 
     # Test Mode
