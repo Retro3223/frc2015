@@ -1,2 +1,2 @@
-py kiwidrive\robot.py deploy --skip-tests
+py kiwidrive\robot.py deploy
 pause

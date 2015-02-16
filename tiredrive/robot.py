@@ -1,18 +1,35 @@
 import wpilib
 
 
-# Returns "value" unless its less than "min", then it returns 0
+# Returns "value" unless its less than "min_val", then it returns 0
 def step(value, min_val):
     if abs(value) < min_val:
         value = 0
     return value
 
 
-# Returns "value" unless its out of range (not between "min" and "max"), then it returns "default"
+# Returns "value" unless its out of range (not between "min_val" and "max_val"), then it returns "default"
 def step_range(value, min_val, max_val, default):
     if not (min_val <= value <= max_val):
         value = default
     return value
+
+
+# Class to maintain state for slow start up and slow down of motors to reduce jerkiness
+class Smooth:
+    def __init__(self, val, stp):
+        self.value = val
+        self.step = stp
+
+    def set(self, new_val):
+        if self.value < new_val:
+            self.value = min(self.value + self.step, new_val)
+        else:
+            self.value = max(self.value - self.step, new_val)
+        return self.value
+
+    def force(self, new_val):
+        self.value = new_val
 
 
 # Robot object definition
@@ -38,9 +55,11 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the winch motor
         self.winch_motor = wpilib.Talon(2)
+        self.winch_power = Smooth(0.0, 0.1)
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
+        self.arm_power = Smooth(0.0, 0.1)
 
         # Initialize the accelerometer
         self.accel = wpilib.BuiltInAccelerometer()
@@ -90,6 +109,9 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.compressor.start()
+        # claw should be down to pick up totes/containers
+        self.claw_down()
+        self.set_claw()
 
         self.auto_state = "start"
         self.positioned_count = 0
@@ -106,7 +128,7 @@ class Robot(wpilib.IterativeRobot):
         elif self.auto_mode == "container":
             self.auto_container_periodic()
         elif self.auto_mode == "tripletote":
-            self.auto_tote_periodic()
+            self.auto_tripletote_periodic()
 
     def turnBackLeft(self):
         angle0 = self.gyro.getAngle()
@@ -169,12 +191,14 @@ class Robot(wpilib.IterativeRobot):
 
     # Autonomous mode for picking up recycling containers
     # Note: run variable "auto_mode" should be set to "container"
+    # Current implementation can also pick up and score a single tote
     def auto_container_periodic(self):
         # state "start": lift up to pick up container
-        if self.auto_state == "start" and -self.winch_encoder.get() < 500:
-            self.winch_motor.set(.5)
-        elif self.auto_state == "start":
-            self.auto_state = "clawout"
+        if self.auto_state == "start":
+            if -self.winch_encoder.get() < 500:
+                self.winch_motor.set(self.winch_power.set(.5))
+            else:
+                self.auto_state = "clawout"
 
         # state "clawout": push out solenoid
         if self.auto_state == "clawout":
@@ -184,43 +208,54 @@ class Robot(wpilib.IterativeRobot):
 
         # NOT IMPLEMENTED: do i want to do a 180 degree turn here?
         if self.auto_state == "turn":
+            """
+            # Turn should have a slow startup and a slow slow down so it stops at 180 degree perfectly
+            if self.gyro.getAngle() < 180:
+                self.robotdrive.tankDrive(1, -1)  # rotate
+            elif abs(self.gyro.getRate()) > .1:
+                self.brake_rotation()
+            else:
+            """
             self.auto_state = "drive"
 
         # state "drive": drive backward over the bump
-        if self.auto_state == "drive" and self.positioned_count < 500:  # 500 is an arbitrary test value, needs to be tested in IRL
-            self.robotdrive.tankDrive(-1, -1)  # drive backward at full speed
-            self.positioned_count += 1
-        elif self.auto_state == "drive":
-            self.positioned_count = 0
-            self.auto_state = "setdown"
+        if self.auto_state == "drive":
+            if self.positioned_count < 500:  # 500 is an arbitrary test value, needs to be tested in IRL
+                self.robotdrive.tankDrive(-1, -1)  # drive backward at full speed
+                self.positioned_count += 1
+            else:
+                self.positioned_count = 0
+                self.auto_state = "setdown"
 
         # state "setdown": set container down
-        if self.auto_state == "setdown" and -self.winch_encoder.get() > 10:
-            self.winch_motor.set(-.5)
-        elif self.auto_state == "setdown":
-            self.auto_state = "backup"
+        if self.auto_state == "setdown":
+            if -self.winch_encoder.get() > 10:
+                self.winch_motor.set(self.winch_power.set(-.5))
+            else:
+                self.auto_state = "backup"
 
         # state "backup": back up
-        if self.auto_state == "backup" and self.positioned_count < 5:
-            self.robotdrive.tankDrive(-1, -1)
-            self.positioned_count += 1
-        elif self.auto_state == "backup":
-            self.positioned_count = 0
-            self.auto_state = "finished"
+        if self.auto_state == "backup":
+            if self.positioned_count < 5:
+                self.robotdrive.tankDrive(-1, -1)
+                self.positioned_count += 1
+            else:
+                self.positioned_count = 0
+                self.auto_state = "finished"
 
     def forward(self, val):
         self.left_motor.set(-val)
         self.right_motor.set(val)
 
     # Autonomous mode for picking up totes
-    # Note: run variable "auto_mode" should be set to "tote"
-    def auto_tote_periodic(self):
+    # Note: run variable "auto_mode" should be set to "tripletote"
+    def auto_tripletote_periodic(self):
         if self.auto_state == "start":
             right_dist = step_range(self.left_ultrasonic_sensor.getValue(), 50, 200, 200)
             left_dist = step_range(self.right_ultrasonic_sensor.getValue(), 50, 200, 200)
             if right_dist < 70 and left_dist < 70:
                 self.auto_state = "positioned"
-            elif right_dist >= 70 and left_dist < 70:
+            elif right_dist >= 70 > left_dist:
                 val1 = (0.5 * abs(right_dist - 70) / 200.0)
                 if abs(val1) < 0.2:
                     val1 = 0.2
@@ -228,7 +263,7 @@ class Robot(wpilib.IterativeRobot):
                 print(val0, val1)
                 self.left_motor.set(val0)
                 self.right_motor.set(val1)
-            elif right_dist < 70 and left_dist >= 70:
+            elif right_dist < 70 <= left_dist:
                 val0 = 0.0
                 val1 = (0.5 * abs(left_dist - 70) / 200.0)
                 if abs(val1) < 0.2:
@@ -246,7 +281,7 @@ class Robot(wpilib.IterativeRobot):
                 self.right_motor.set(val1)
         elif self.auto_mode == "positioned":
             self.positioned_count += 1
-            self.winch_set(0.5);
+            self.winch_set(0.5)
             if self.positioned_count > 40:
                 self.claw_up()
 
@@ -277,7 +312,7 @@ class Robot(wpilib.IterativeRobot):
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
         arm_signal = self.left_joystick.getRawButton(3) + -self.left_joystick.getRawButton(2)
-        self.arm_motor.set(0.3 * arm_signal)
+        self.arm_motor.set(self.arm_power.set(0.3 * arm_signal))
 
         # Handle piston in and out
         # Right joystick trigger button toggles claw in or out
@@ -288,7 +323,7 @@ class Robot(wpilib.IterativeRobot):
             self.claw_state = not self.claw_state
         self.set_claw()
 
-        # If the right joystick slider is down, go to test mode
+        # If the right joystick slider is down, also run test mode
         if self.right_joystick.getRawAxis(2) > .5:
             self.test_mode()
 
@@ -297,6 +332,7 @@ class Robot(wpilib.IterativeRobot):
         pass
 
     # Test Mode
+    # calculates and prints values to be used in testing
     def test_mode(self):
         # Calculate x and y distance travelled using accelerometer
         a_x = self.accel.getX()
@@ -355,7 +391,7 @@ class Robot(wpilib.IterativeRobot):
     # Helper Functions
 
     # Set "left" and "right" variables to the left and right
-    # joystick outputs provided they are more than "threshold"
+    # joystick outputs provided they are more than "joystick_threshold"
     def drive_values(self):
         joystick_threshold = 0.2
         left = step(
@@ -368,7 +404,7 @@ class Robot(wpilib.IterativeRobot):
         )
 
         # Fuzzy match where if the left and right joysticks are moved about the same,
-        #    then it moves the tankDrive the average of the two values
+        # then it moves the tankDrive the average of the two values
         if abs(left - right) < .1:
             left = right = (left + right) / 2.0
 
@@ -385,8 +421,8 @@ class Robot(wpilib.IterativeRobot):
     # by powering the motors in the direction opposite the movement
     def brake_linear(self):
         accel_y = self.accel.getY()
-        wheel_motion = accel_y * .1
-        return -wheel_motion, -wheel_motion
+        wheel_motion = -accel_y * .1
+        return wheel_motion, wheel_motion
 
     # Moves claw into "claw_state" position
     def set_claw(self):
@@ -445,7 +481,7 @@ class Robot(wpilib.IterativeRobot):
             val = 0.5 * winch_signal
 
         # Sets the winch motor's value
-        self.winch_motor.set(val)
+        self.winch_motor.set(self.winch_power.set(val))
 
 
 if __name__ == "__main__":
