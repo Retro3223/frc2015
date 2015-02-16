@@ -49,19 +49,13 @@ class Robot(wpilib.IterativeRobot):
         # Initialize the drive system
         self.robotdrive = wpilib.RobotDrive(self.left_motor, self.right_motor)
 
-        # Invert the motors so that they drive the right way
-        self.robotdrive.setInvertedMotor(
-            wpilib.RobotDrive.MotorType.kRearLeft, False)
-        self.robotdrive.setInvertedMotor(
-            wpilib.RobotDrive.MotorType.kRearRight, False)
-
         # Initialize the winch motor
         self.winch_motor = wpilib.Talon(2)
         self.winch_power = Smooth(0.0, 0.1)
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
-        self.arm_power = Smooth(0.0, 0.1)
+        self.arm_power = Smooth(0.0, 0.01)
 
         # Initialize the accelerometer
         self.accel = wpilib.BuiltInAccelerometer()
@@ -110,7 +104,7 @@ class Robot(wpilib.IterativeRobot):
 
     # Autonomous Mode
     def autonomousInit(self):
-        # self.compressor.start()
+        self.compressor.start()
 
         self.auto_state = "start"
         self.positioned_count = 0
@@ -223,6 +217,7 @@ class Robot(wpilib.IterativeRobot):
     # Note: run variable "auto_mode" should be set to "container"
     # Current implementation can also pick up and score a single tote
     def auto_container_periodic(self):
+        print('auto state: ', self.auto_state)
         # state "start": claw should be down to pick up totes/containers
         if self.auto_state == "start":
             self.claw_down()
@@ -232,6 +227,7 @@ class Robot(wpilib.IterativeRobot):
         # state "lift": lift up to pick up container
         if self.auto_state == "lift":
             if -self.winch_encoder.get() < 500:
+                print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
                 self.winch_motor.set(self.winch_power.set(.5))
             else:
                 self.winch_power.force(0)
@@ -250,25 +246,43 @@ class Robot(wpilib.IterativeRobot):
 
         # state "drive": drive backward over the bump
         if self.auto_state == "drive":
-            if self.positioned_count < 500:  # 500 is an arbitrary test value, needs to be tested in IRL
-                self.robotdrive.tankDrive(-1, -1)  # drive backward at full speed
+            if self.positioned_count < 190:
+                self.forward(-.6)
                 self.positioned_count += 1
+                print('positioned_count: ', self.positioned_count)
+                self.winch_motor.set(0.1 - 0.01 * (-self.winch_encoder.get() - 500))
             else:
                 self.positioned_count = 0
                 self.auto_state = "setdown"
 
         # state "setdown": set container down
         if self.auto_state == "setdown":
-            if -self.winch_encoder.get() > 10:
-                self.winch_motor.set(self.winch_power.set(-.5))
+            print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
+            if -self.winch_encoder.get() > 15:
+                self.winch_motor.set(-.5)
+                self.brake_linear()
             else:
-                self.winch_power.force(0)
+                self.winch_motor.set(0)
+                self.auto_state = "clawin"
+                
+        # state "clawin": claw should be down to release tote/container
+        if self.auto_state == "clawin":
+            self.claw_down()
+            self.set_claw()
+            self.auto_state = "wait"
+
+        # state "wait": waits for the claw to pull away from the tote
+        if self.auto_state == "wait":
+            if self.positioned_count < 20:
+                self.positioned_count += 1
+            else:
+                self.positioned_count = 0
                 self.auto_state = "backup"
 
         # state "backup": back up
         if self.auto_state == "backup":
-            if self.positioned_count < 5:
-                self.robotdrive.tankDrive(-1, -1)
+            if self.positioned_count < 15:
+                self.forward(-1)
                 self.positioned_count += 1
             else:
                 self.positioned_count = 0
@@ -321,7 +335,8 @@ class Robot(wpilib.IterativeRobot):
         self.winch_setpoint = -self.winch_encoder.get()
         self.reset_auto()
         self.raising_winch = False
-        # self.compressor.start()
+        
+        self.compressor.start()
 
     def teleopPeriodic(self):
         # Override everything (prevents all teleop) and run autonomously to pick up tote
@@ -367,7 +382,7 @@ class Robot(wpilib.IterativeRobot):
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
         arm_signal = self.left_joystick.getRawButton(3) + -self.left_joystick.getRawButton(2)
-        self.arm_motor.set(self.arm_power.set(0.3 * arm_signal))
+        self.arm_motor.set(self.arm_power.set(arm_signal))
 
         # Handle piston in and out
         # Right joystick trigger button toggles claw in or out
@@ -411,17 +426,17 @@ class Robot(wpilib.IterativeRobot):
 
         # Prints limit switch sensor values when left button 6 is pressed
         if self.left_joystick.getRawButton(6):
-            print("left limit: ", self.left_claw_whisker())
+            print("left limit:  ", self.left_claw_whisker())
             print("right limit: ", self.right_claw_whisker())
 
         # Prints ultrasonic sensor values when left button 10 is pressed
         if self.left_joystick.getRawButton(10):
-            print("left_ultrasonic_sensor: ", self.left_ultrasonic_sensor.getValue())
+            print("left_ultrasonic_sensor:  ", self.left_ultrasonic_sensor.getValue())
             print("right_ultrasonic_sensor: ", self.right_ultrasonic_sensor.getValue())
 
         # Prints optical sensor values when left button 11 is pressed
         if self.left_joystick.getRawButton(11):
-            print("left_optical_sensor: ", self.right_optical_sensor.get())
+            print("left_optical_sensor:  ", self.right_optical_sensor.get())
             print("right_optical_sensor: ", self.right_optical_sensor.get())
 
         # Print current winch encoder value if right button 6 is pressed
@@ -438,6 +453,9 @@ class Robot(wpilib.IterativeRobot):
         # Reset gyro to 0 if left button 9 is pressed
         if self.left_joystick.getRawButton(9):
             self.gyro.reset()
+            
+        if self.left_joystick.getRawButton(2) or self.left_joystick.getRawButton(3):
+            print('arm power: ', self.arm_power.value)
 
     # Disabled Mode
     def disabledPeriodic(self):
