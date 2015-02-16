@@ -10,6 +10,7 @@ env:
     - TESTS=flake8-kiwidrive
     - TESTS=flake8-tiredrive
     - TESTS=tiredrive-unittests
+    - TESTS=kiwidrive-unittests
 
 install:
   - pip install flake8
@@ -19,3 +20,7 @@ install:
 
 script:
     - ./travis.sh $TESTS
+
+matrix:
+    allow_failures:
+        - env: TESTS=kiwidrive-unittests 
