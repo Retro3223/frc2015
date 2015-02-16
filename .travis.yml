@@ -2,15 +2,17 @@ language: python
 python:
     - "3.4"
 sudo: false
-env:
-    - TOX_ENV=flake8
-    - TOX_ENV=py34-pyfrc2015
 
 matrix:
   fast_finish: true
 
 install:
-  - pip install tox
+  - pip install flake8
+  - pip install pyfrc
+  - pip install pytest
+  - pip install mock
 
 script:
-    - tox -e $TOX_ENV
+    - flake8 kiwidrive
+    - flake8 tiredrive
+    - python tiredrive/robot.py test tests.py
