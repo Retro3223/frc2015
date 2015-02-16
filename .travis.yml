@@ -6,6 +6,11 @@ sudo: false
 matrix:
   fast_finish: true
 
+env:
+    - TESTS=flake8-kiwidrive
+    - TESTS=flake8-tiredrive
+    - TESTS=tiredrive-unittests
+
 install:
   - pip install flake8
   - pip install pyfrc
@@ -13,6 +18,4 @@ install:
   - pip install mock
 
 script:
-    - flake8 kiwidrive
-    - flake8 tiredrive
-    - python tiredrive/robot.py test tests.py
+    - ./travis.sh $TESTS
