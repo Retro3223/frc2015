@@ -4,7 +4,6 @@ from ddt import ddt, data
 from .kiwidrive import (
     normalize_joystick_axes,
     get_wheel_magnitudes,
-    KiwiDrive,
 )
 
 
@@ -56,4 +55,3 @@ class KiwidriveTests(unittest.TestCase):
                 expected_magnitudes[i],
                 magnitudes[i],
                 places=3)
-

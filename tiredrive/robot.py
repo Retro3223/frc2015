@@ -1,24 +1,33 @@
 import wpilib
 
 
-# Returns "value" unless its less than "min", then it returns 0
 def step(value, min_val):
+    """
+    Returns "value" unless its less than "min", then it returns 0
+    """
     if abs(value) < min_val:
         value = 0
     return value
 
 
-# Returns "value" unless its out of range (not between "min" and "max"), then it returns "default"
 def step_range(value, min_val, max_val, default):
+    """
+    Returns "value" unless its out of range (not between "min" and "max"),
+    then it returns "default
+    """
     if not (min_val <= value <= max_val):
         value = default
     return value
 
 
-# Robot object definition
 class Robot(wpilib.IterativeRobot):
-    # Initialize all of the sensors and controllers on the robot
+    """
+    Robot object definition
+    """
     def robotInit(self):
+        """
+        Initialize all of the sensors and controllers on the robot
+        """
         # Initialize the Joysticks
         self.left_joystick = wpilib.Joystick(0)
         self.right_joystick = wpilib.Joystick(1)
@@ -113,7 +122,7 @@ class Robot(wpilib.IterativeRobot):
         settle_count = 0
         while True:
             angle = self.gyro.getAngle()
-            anglediff = (angle0 + 90) - self.gyro.getAngle()
+            anglediff = (angle0 + 90) - angle
             if abs(anglediff) < 3:
                 settle_count += 1
             else:
@@ -121,8 +130,10 @@ class Robot(wpilib.IterativeRobot):
             if settle_count > 20:
                 break
             val = -0.08 * anglediff
-            if val > 0.5: val = 0.5
-            if val < -0.5: val = -0.5
+            if val > 0.5:
+                val = 0.5
+            if val < -0.5:
+                val = -0.5
             self.left_motor.set(0)
             self.right_motor.set(val)
             yield
@@ -132,7 +143,7 @@ class Robot(wpilib.IterativeRobot):
         settle_count = 0
         while True:
             angle = self.gyro.getAngle()
-            anglediff = (angle0 - 90) - self.gyro.getAngle()
+            anglediff = (angle0 - 90) - angle
             if abs(anglediff) < 3:
                 settle_count += 1
             else:
@@ -140,8 +151,10 @@ class Robot(wpilib.IterativeRobot):
             if settle_count > 20:
                 break
             val = -0.08 * anglediff
-            if val > 0.5: val = 0.5
-            if val < -0.5: val = -0.5
+            if val > 0.5:
+                val = 0.5
+            if val < -0.5:
+                val = -0.5
             self.left_motor.set(0)
             self.right_motor.set(val)
             yield
@@ -152,7 +165,6 @@ class Robot(wpilib.IterativeRobot):
             self.forward(-0.5)
             yield
         """
-        angle0 = self.gyro.getAngle()
         for x in self.turnBackLeft():
             yield
         for i in range(140):
@@ -187,7 +199,8 @@ class Robot(wpilib.IterativeRobot):
             self.auto_state = "drive"
 
         # state "drive": drive backward over the bump
-        if self.auto_state == "drive" and self.positioned_count < 500:  # 500 is an arbitrary test value, needs to be tested in IRL
+        if self.auto_state == "drive" and self.positioned_count < 500:
+            # 500 is an arbitrary test value, needs to be tested in IRL
             self.robotdrive.tankDrive(-1, -1)  # drive backward at full speed
             self.positioned_count += 1
         elif self.auto_state == "drive":
@@ -212,12 +225,16 @@ class Robot(wpilib.IterativeRobot):
         self.left_motor.set(-val)
         self.right_motor.set(val)
 
-    # Autonomous mode for picking up totes
-    # Note: run variable "auto_mode" should be set to "tote"
     def auto_tote_periodic(self):
+        """
+        Autonomous mode for picking up totes
+        Note: run variable "auto_mode" should be set to "tote"
+        """
         if self.auto_state == "start":
-            right_dist = step_range(self.left_ultrasonic_sensor.getValue(), 50, 200, 200)
-            left_dist = step_range(self.right_ultrasonic_sensor.getValue(), 50, 200, 200)
+            right_dist = step_range(self.left_ultrasonic_sensor.getValue(),
+                                    50, 200, 200)
+            left_dist = step_range(self.right_ultrasonic_sensor.getValue(),
+                                   50, 200, 200)
             if right_dist < 70 and left_dist < 70:
                 self.auto_state = "positioned"
             elif right_dist >= 70 and left_dist < 70:
@@ -246,17 +263,18 @@ class Robot(wpilib.IterativeRobot):
                 self.right_motor.set(val1)
         elif self.auto_mode == "positioned":
             self.positioned_count += 1
-            self.winch_set(0.5);
+            self.winch_set(0.5)
             if self.positioned_count > 40:
                 self.claw_up()
 
     # Teleop Mode
     def teleopInit(self):
         self.winch_setpoint = -self.winch_encoder.get()
-        #self.compressor.start()
+        self.compressor.start()
 
     def teleopPeriodic(self):
-        # If left trigger pulled, run brake algorithm, otherwise use joystick values to drive
+        # If left trigger pulled, run brake algorithm,
+        # otherwise use joystick values to drive
         if self.left_joystick.getRawButton(1):
             rotation_values = self.brake_rotation()
             linear_values = self.brake_linear()
@@ -270,13 +288,15 @@ class Robot(wpilib.IterativeRobot):
 
         # Feed winch controller raw values from the joystick
         # Right joystick button 3 raises winch, button 2 lowers winch
-        winch_signal = self.right_joystick.getRawButton(3) + -self.right_joystick.getRawButton(2)
+        winch_signal = self.right_joystick.getRawButton(3) + \
+            -self.right_joystick.getRawButton(2)
         # Right joystick button 6 overrides encoder, button 7 resets encoder
         self.winch_set(winch_signal)
 
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
-        arm_signal = self.left_joystick.getRawButton(3) + -self.left_joystick.getRawButton(2)
+        arm_signal = self.left_joystick.getRawButton(3) + \
+            -self.left_joystick.getRawButton(2)
         self.arm_motor.set(0.3 * arm_signal)
 
         # Handle piston in and out
@@ -325,8 +345,10 @@ class Robot(wpilib.IterativeRobot):
 
         # Prints ultrasonic sensor values when left button 10 is pressed
         if self.left_joystick.getRawButton(10):
-            print("left_ultrasonic_sensor: ", self.left_ultrasonic_sensor.getValue())
-            print("right_ultrasonic_sensor: ", self.right_ultrasonic_sensor.getValue())
+            print("left_ultrasonic_sensor: ",
+                  self.left_ultrasonic_sensor.getValue())
+            print("right_ultrasonic_sensor: ",
+                  self.right_ultrasonic_sensor.getValue())
 
         # Prints optical sensor values when left button 11 is pressed
         if self.left_joystick.getRawButton(11):
@@ -337,7 +359,7 @@ class Robot(wpilib.IterativeRobot):
         # This button also overrides winch encoder safety bounds
         if self.right_joystick.getRawButton(6):
             revs = -self.winch_encoder.get()
-            print('revs: ', revs)
+            print('winch revolutions: ', revs)
 
         # Print current gyro value if left button 8 is pressed
         if self.left_joystick.getRawButton(8):
@@ -367,23 +389,28 @@ class Robot(wpilib.IterativeRobot):
             -joystick_threshold,
         )
 
-        # Fuzzy match where if the left and right joysticks are moved about the same,
-        #    then it moves the tankDrive the average of the two values
+        # Fuzzy match where if the left and right joysticks are moved
+        # about the same, then it moves the tankDrive the average of
+        # the two values
         if abs(left - right) < .1:
             left = right = (left + right) / 2.0
 
         return left, right
 
-    # Brakes robot if it's rotating
-    # by powering the motors in the direction opposite the rotation
     def brake_rotation(self):
+        """
+        Brakes robot if it's rotating
+        by powering the motors in the direction opposite the rotation
+        """
         gyro_rate = self.gyro.getRate()
         wheel_rotation = gyro_rate * .1
         return wheel_rotation, -wheel_rotation
 
-    # Brakes robot if it's moving forward or backward
-    # by powering the motors in the direction opposite the movement
     def brake_linear(self):
+        """
+        Brakes robot if it's moving forward or backward
+        by powering the motors in the direction opposite the movement
+        """
         accel_y = self.accel.getY()
         wheel_motion = accel_y * .1
         return -wheel_motion, -wheel_motion
@@ -412,8 +439,9 @@ class Robot(wpilib.IterativeRobot):
     # Right joystick button 6 overrides encoder, button 7 resets encoder
     def winch_set(self, winch_signal):
         """
-        Set winch controller safely by taking max and min encoder values into account
-        (unless you're pressing the override button - right joystick, button 6)
+        Set winch controller safely by taking max and min encoder values
+        into account, unless you're pressing the override button
+        (right joystick, button 6)
 
         winch_signal=0 -> maintain winch position
         winch_signal>0 -> winch up?
@@ -440,7 +468,8 @@ class Robot(wpilib.IterativeRobot):
             # Pressing right button 6 overrides winch's safety bounds
             if not (self.right_joystick.getRawButton(6)):
                 # Stop the winch if it is going out of bounds
-                if (winch_signal > 0.1 and revs >= 1170) or (winch_signal < -0.1 and revs <= 8):
+                if (winch_signal > 0.1 and revs >= 1170) or \
+                        (winch_signal < -0.1 and revs <= 8):
                     winch_signal = 0
             val = 0.5 * winch_signal
 

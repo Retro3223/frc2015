@@ -20,12 +20,6 @@ def get_wheel_magnitudes(v, m=None):
     if m is None:
         m = M
     return np.dot(m, v)
-def get_wheel_magnitudes2(x, y):
-	result = [0,0,0]
-	result[0] = -1.28 * x;
-	result[1] = 0.8 * x + -0.75 * y
-	result[2] = 0.8 * x +  0.75 * y
-	return result
 
 
 def normalize_joystick_axes(x, y):
@@ -53,9 +47,9 @@ class KiwiDrive:
         self.gyro = wpilib.Gyro(0)
         self.m = np.copy(M)
         self.m[0][0] = -1.6
-        self.m[:, 1] *= 1.3 # make forward a bit faster
-        self.m[:, 0] *= 0.8 # make strafe a bit slower
-        self.motor_bias = 0.8;
+        self.m[:, 1] *= 1.3  # make forward a bit faster
+        self.m[:, 0] *= 0.8  # make strafe a bit slower
+        self.motor_bias = 0.8
         self.pid_correction = 0.0
         self.last_rot = 0.0
         self.last_angle = 0
@@ -69,9 +63,9 @@ class KiwiDrive:
             lambda: self.getAngle(),
             lambda output: self.pidWrite(output),
         )
-        
+
         self.pidcontroller.setAbsoluteTolerance(5)
-        
+
     def Enable(self):
         self.pidcontroller.setSetpoint(self.getAngle())
         self.pidcontroller.enable()
@@ -81,7 +75,7 @@ class KiwiDrive:
 
     def getAngle(self):
         return int(self.gyro.pidGet())
-    
+
     def Drive(self):
         x = self.joystick.getRawAxis(4)
         if abs(x) < 0.2:
@@ -90,7 +84,7 @@ class KiwiDrive:
         if abs(y) < 0.2:
             y = 0
         # rot is +1.0 for right trigger, -1.0 for left
-        rot = self.xbox.right_trigger() + -self.xbox.left_trigger();
+        rot = self.xbox.right_trigger() + -self.xbox.left_trigger()
         self.RawDrive(
             x,
             y,
@@ -104,7 +98,7 @@ class KiwiDrive:
             self.pidcontroller.reset()
         if rot == 0 and self.last_rot != 0:
             self.waiting_to_reenable = True
-            print ("WAITING TO REENABLE")
+            print("WAITING TO REENABLE")
         elif self.waiting_to_reenable:
             if self.last_angle == self.getAngle():
                 self.last_angle_count += 1
@@ -114,7 +108,7 @@ class KiwiDrive:
             if self.last_angle_count >= 10:
                 self.waiting_to_reenable = False
                 self.Enable()
-                print ("REENABLING")
+                print("REENABLING")
         self.last_angle = self.getAngle()
         self.last_rot = rot
         for i, motor in enumerate(self.motors):
@@ -127,5 +121,5 @@ class KiwiDrive:
             motor.set(val)
 
     def pidWrite(self, output):
-        print ("pid output: ", output)
+        print("pid output: ", output)
         self.pid_correction = output

@@ -19,17 +19,18 @@ class Robot(wpilib.IterativeRobot):
 
     def autonomousPeriodic(self):
         pass
+
     def teleopInit(self):
         self.kiwidrive.Enable()
+
     def disabledInit(self):
         self.kiwidrive.Disable()
+
     def teleopPeriodic(self):
         self.kiwidrive.Drive()
 
-        #print (self.kiwidrive.gyro.getAngle())
     def testPeriodic(self):
         pass
-
 
 
 if __name__ == "__main__":
