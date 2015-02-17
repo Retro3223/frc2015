@@ -187,9 +187,10 @@ class Robot(wpilib.IterativeRobot):
     # Simplest turn algorithm
     # Returns whether it is done turning
     def turn_brake(self, angle):
-        if self.gyro.getAngle() < angle:
-            self.robotdrive.tankDrive(-1, 1)  # rotate
-        elif abs(self.gyro.getRate()) > .1:
+        print('angle: ', abs(self.gyro.getAngle()) % 360)
+        if abs(self.gyro.getAngle()) % 360 < angle:
+            self.pivot_clockwise(1)
+        elif abs(self.gyro.getRate()) > .01:
             self.brake_rotation()
         else:
             return True
@@ -199,7 +200,7 @@ class Robot(wpilib.IterativeRobot):
     def turn(self, angle):
         slow_down_angle = 30
 
-        remaining_angle = angle - self.gyro.getAngle()
+        remaining_angle = angle - abs(self.gyro.getAngle()) % 360
 
         if abs(remaining_angle) < 1 and abs(self.gyro.getRate()) < .1:
             return True
@@ -227,7 +228,7 @@ class Robot(wpilib.IterativeRobot):
         # state "lift": lift up to pick up container
         if self.auto_state == "lift":
             if -self.winch_encoder.get() < 500:
-                print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
+                # print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
                 self.winch_motor.set(self.winch_power.set(.5))
             else:
                 self.winch_power.force(0)
@@ -237,19 +238,20 @@ class Robot(wpilib.IterativeRobot):
         if self.auto_state == "clawout":
             self.claw_up()
             self.set_claw()
-            self.auto_state = "drive"
+            self.auto_state = "turn"
 
-        # CURRENTLY SKIPPED: do i want to do a 180 degree turn here?
+        # do i want to do a 180 degree turn here?
         if self.auto_state == "turn":
-            if not self.turn_brake(180):
+            done_turning = self.turn_brake(180)
+            if done_turning:
                 self.auto_state = "drive"
 
-        # state "drive": drive backward over the bump
+        # state "drive": drive over the bump
         if self.auto_state == "drive":
             if self.positioned_count < 190:
-                self.forward(-.6)
+                self.forward(.6)
                 self.positioned_count += 1
-                print('positioned_count: ', self.positioned_count)
+                # print('positioned_count: ', self.positioned_count)
                 self.winch_motor.set(0.1 - 0.01 * (-self.winch_encoder.get() - 500))
             else:
                 self.positioned_count = 0
@@ -257,7 +259,7 @@ class Robot(wpilib.IterativeRobot):
 
         # state "setdown": set container down
         if self.auto_state == "setdown":
-            print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
+            # print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
             if -self.winch_encoder.get() > 15:
                 self.winch_motor.set(-.5)
                 self.brake_linear()
@@ -291,6 +293,10 @@ class Robot(wpilib.IterativeRobot):
     def forward(self, val):
         self.left_motor.set(-val)
         self.right_motor.set(val)
+        
+    def pivot_clockwise(self, val):
+        self.left_motor.set(-val)
+        self.right_motor.set(-val)
 
     # Autonomous mode for picking up totes
     # Note: run variable "auto_mode" should be set to "tripletote"
@@ -569,8 +575,8 @@ class Robot(wpilib.IterativeRobot):
 
         # state "drive": drive forward
         if self.auto_state == "drive":
-            if not self.left_limit_switch.get() and not self.left_limit_switch.get():
-                self.robotdrive.tankDrive(0.5, 0.5)
+            if not self.left_claw_whisker() and not self.right_claw_whisker():
+                self.forward(0.5)
             else:
                 self.auto_state = "pickup"
 
