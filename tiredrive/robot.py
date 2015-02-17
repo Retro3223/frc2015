@@ -105,7 +105,7 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.compressor.start()
-
+  
         self.auto_state = "start"
         self.positioned_count = 0
         if self.auto_mode == "tote":
@@ -354,19 +354,6 @@ class Robot(wpilib.IterativeRobot):
         if self.auto_state == "finished" or self.left_joystick.getRawButton(7):
             self.reset_auto()
 
-        # Raise winch subroutine
-        if self.right_joystick.getRawButton(5):
-            self.raising_winch = True
-        if self.right_joystick.getRawButton(4):
-            self.raising_winch = False
-        # Keeps raising winch while other teleop occurs
-        if self.raising_winch:
-            if -self.winch_encoder.get() < 500:
-                self.winch_motor.set(self.winch_power.set(.5))
-            else:
-                self.winch_power.force(0)
-                self.raising_winch = False
-
         # If left trigger pulled, run brake algorithm, otherwise use joystick values to drive
         if self.left_joystick.getRawButton(1):
             rotation_values = self.brake_rotation()
@@ -379,11 +366,24 @@ class Robot(wpilib.IterativeRobot):
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)
 
-        # Feed winch controller raw values from the joystick
-        # Right joystick button 3 raises winch, button 2 lowers winch
-        winch_signal = self.right_joystick.getRawButton(3) + -self.right_joystick.getRawButton(2)
-        # Right joystick button 6 overrides encoder, button 7 resets encoder
-        self.winch_set(winch_signal)
+        # Raise winch subroutine
+        if self.right_joystick.getRawButton(5):
+            self.raising_winch = True
+        if self.right_joystick.getRawButton(4):
+            self.raising_winch = False
+        # Keeps raising winch while other teleop occurs
+        if self.raising_winch:
+            if -self.winch_encoder.get() < 500:
+                self.winch_motor.set(self.winch_power.set(.5))
+            else:
+                self.winch_power.force(0)
+                self.raising_winch = False
+        else:
+            # Feed winch controller raw values from the joystick
+            # Right joystick button 3 raises winch, button 2 lowers winch
+            winch_signal = self.right_joystick.getRawButton(3) + -self.right_joystick.getRawButton(2)
+            # Right joystick button 6 overrides encoder, button 7 resets encoder
+            self.winch_set(winch_signal)
 
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
@@ -397,7 +397,7 @@ class Robot(wpilib.IterativeRobot):
         elif self.claw_toggle:
             self.claw_toggle = False
             self.claw_state = not self.claw_state
-        self.set_claw()
+            self.set_claw()
 
         # If the right joystick slider is down, also run test mode
         if self.right_joystick.getRawAxis(2) > .5:
@@ -460,6 +460,9 @@ class Robot(wpilib.IterativeRobot):
         if self.left_joystick.getRawButton(9):
             self.gyro.reset()
             
+        if self.right_joystick.getRawButton(2) or self.right_joystick.getRawButton(3):
+            print('winch power: ', self.winch_power.value)
+
         if self.left_joystick.getRawButton(2) or self.left_joystick.getRawButton(3):
             print('arm power: ', self.arm_power.value)
 
