@@ -1,40 +1,6 @@
 import wpilib
 import math
-
-
-class ParallelGenerators:
-    def __init__(self):
-        self.generators = {}
-        self.afters = {}
-
-    def add(self, name, generator, after=None):
-        self.generators[name] = iter(generator)
-        if after is not None:
-            self.after(name, after)
-
-    def after(self, succeed_name, precede_name):
-        if precede_name not in self.afters:
-            self.afters[precede_name] = []
-        self.afters[precede_name].append(
-            (succeed_name, self.generators[succeed_name]))
-        del self.generators[succeed_name]
-
-    def cancel(self, name):
-        if name in self.afters:
-            for (new_name, generator) in self.afters[name]:
-                self.generators[new_name] = generator
-        del self.generators[name]
-
-    def next(self):
-        results = {}
-        items = list(self.generators.items())
-        for (name, g) in items:
-            try:
-                val = g.__next__()
-                results[name] = val
-            except StopIteration:
-                self.cancel(name)
-        return results
+from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
@@ -151,6 +117,10 @@ class Robot(wpilib.IterativeRobot):
         # self.dog.setExpiration(1.75)
         self.dog.setSafetyEnabled(False)
 
+        self.strategies = {}
+        Auto3StraightStrategy(self)
+        TurnStrategy(self)
+        ContainerStrategy(self)
         # Select which autonomous mode: "tote", "container", "tripletote"
         self.auto_mode = "3-tote-straight"
 
@@ -165,36 +135,12 @@ class Robot(wpilib.IterativeRobot):
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
 
         self.auto_state = "start"
-        self.positioned_count = 0
-        if self.auto_mode == "container":
-            pass
-        elif self.auto_mode == "tote":
-            self.auto = iter(self.auto_tote_periodic())
-        elif self.auto_mode == '3-tote-straight':
-            self.auto = ParallelGenerators()
-            self.claw_down()
-            self.auto.add("claw", self.maintain_claw())
-            self.auto.add("pickup1", self.auto_pickup_tote(1))
-            self.auto.add("winch", self.maintain_winch())
-            self.auto.after("winch", "pickup1")
-            self.auto.add("drive1", self.auto_drive_until_tote(1))
-            self.auto.after("drive1", "pickup1")
-            self.auto.add("drop1", self.drop_tote())
-            self.auto.after("drop1", 'drive1')
-            self.auto.add("drive1.5", self.auto_drive_until_liftable(1))
-            self.auto.after("drive1.5", "drop1")
+        self.strategies[self.auto_mode].autonomousInit()
 
     # Runs an autonomous mode method based on the selected mode
     def autonomousPeriodic(self):
         self.dog.feed()
-        if self.auto_mode == "tote":
-            self.auto.__next__()
-        elif self.auto_mode == '3-tote-straight':
-            self.auto.next()
-        elif self.auto_mode == "container":
-            self.auto_container_periodic()
-        elif self.auto_mode == "tripletote":
-            self.auto_tripletote_periodic()
+        self.strategies[self.auto_mode].autonomousPeriodic()
 
     def maintain_claw(self):
         while True:
@@ -209,118 +155,11 @@ class Robot(wpilib.IterativeRobot):
     def get_winch_revs(self):
         return -self.winch_encoder.get()
 
-    def auto_pickup_tote(self, tote_height):
-        tote_revs = 320
-        assert self.get_winch_revs() < 20
-        self.winch_setpoint = self.winch_setpoint_zero + \
-            tote_revs * tote_height
-        durped = False
-        while self.get_winch_revs() < self.winch_setpoint:
-            if not durped and self.get_winch_revs() >= 70:
-                self.claw_up()
-                durped = True
-            self.winch_set(1.0)
-            yield
+    def winch_encoder_min(self):
+        return self._winch_encoder_min
 
-    def auto_drive_until_tote(self, tote_number):
-        revs0 = self.right_encoder.get()
-        while True:
-            val = self.right_encoder.get()
-            if val > revs0 + 1418:
-                break
-            self.forward(0.7)
-            yield
-        self.auto.after("winch", "drop%s" % tote_number)
-        yield
-
-    def auto_drive_until_liftable(self, tote_number):
-        while not self.left_claw_whisker():
-            self.forward(0.3)
-            yield
-
-    def drop_tote(self):
-        self.winch_setpoint = self.winch_setpoint_zero
-        durped = False
-        while self.get_winch_revs() > self.winch_setpoint_zero + 10:
-            if not durped and self.get_winch_revs() <= 15:
-                self.claw_down()
-                durped = True
-            self.winch_set(-1.0)
-            yield
-
-    def turn_back_left(self):
-        angle0 = self.gyro.getAngle()
-        settle_count = 0
-        while True:
-            angle = self.gyro.getAngle()
-            anglediff = (angle0 + 90) - angle
-            if abs(anglediff) < 3:
-                settle_count += 1
-            else:
-                settle_count = 0
-            if settle_count > 20:
-                break
-            val = -0.08 * anglediff
-            if val > 0.5:
-                val = 0.5
-            if val < -0.5:
-                val = -0.5
-            self.left_motor.set(0)
-            self.right_motor.set(val)
-            yield
-
-    def turn_forward_left(self):
-        angle0 = self.gyro.getAngle()
-        settle_count = 0
-        while True:
-            angle = self.gyro.getAngle()
-            anglediff = (angle0 - 90) - angle
-            if abs(anglediff) < 3:
-                settle_count += 1
-            else:
-                settle_count = 0
-            if settle_count > 20:
-                break
-            val = -0.08 * anglediff
-            if val > 0.5:
-                val = 0.5
-            if val < -0.5:
-                val = -0.5
-            self.left_motor.set(0)
-            self.right_motor.set(val)
-            yield
-
-    def auto_tote_periodic(self):
-        """
-        for i in range(20):
-            self.forward(-0.5)
-            yield
-        """
-        for x in self.turn_back_left():
-            yield
-        for i in range(140):
-            self.forward(0.5)
-            yield
-        for i in range(15):
-            self.forward(-0.5)
-            yield
-        for x in self.turn_forward_left():
-            yield
-        while True:
-            self.forward(0)
-            yield
-
-    # Simplest turn algorithm
-    # Returns whether it is done turning
-    def turn_brake(self, angle):
-        print('angle: ', abs(self.gyro.getAngle()) % 360)
-        if abs(self.gyro.getAngle()) % 360 < angle:
-            self.pivot_clockwise(1)
-        elif abs(self.gyro.getRate()) > .01:
-            self.brake_rotation()
-        else:
-            return True
-        return False
+    def winch_encoder_max(self):
+        return self._winch_encoder_min + 1162
 
     # Turn should have a slow down so it stops at angle perfectly
     def turn(self, angle):
@@ -341,82 +180,6 @@ class Robot(wpilib.IterativeRobot):
         self.robotdrive.tankDrive(-value, value)  # rotate
         return False
 
-    # Autonomous mode for picking up recycling containers
-    # Note: run variable "auto_mode" should be set to "container"
-    # Current implementation can also pick up and score a single tote
-    def auto_container_periodic(self):
-        print('auto state: ', self.auto_state)
-        # state "start": claw should be down to pick up totes/containers
-        if self.auto_state == "start":
-            self.claw_down()
-            self.set_claw()
-            self.auto_state = "lift"
-
-        # state "lift": lift up to pick up container
-        if self.auto_state == "lift":
-            if -self.winch_encoder.get() < 500:
-                self.winch_motor.set(self.winch_power.set(.5))
-            else:
-                self.winch_power.force(0)
-                self.auto_state = "clawout"
-
-        # state "clawout": push out solenoid
-        if self.auto_state == "clawout":
-            self.claw_up()
-            self.set_claw()
-            self.auto_state = "turn"
-
-        # do i want to do a 180 degree turn here?
-        if self.auto_state == "turn":
-            done_turning = self.turn_brake(180)
-            if done_turning:
-                self.auto_state = "drive"
-
-        # state "drive": drive over the bump
-        if self.auto_state == "drive":
-            if self.positioned_count < 190:
-                self.forward(.6)
-                self.positioned_count += 1
-                # print('positioned_count: ', self.positioned_count)
-                self.winch_motor.set(0.1 -
-                                     0.01 * (-self.winch_encoder.get() - 500))
-            else:
-                self.positioned_count = 0
-                self.auto_state = "setdown"
-
-        # state "setdown": set container down
-        if self.auto_state == "setdown":
-            # print('-self.winch_encoder.get(): ', -self.winch_encoder.get())
-            if -self.winch_encoder.get() > 15:
-                self.winch_motor.set(-.5)
-                self.brake_linear()
-            else:
-                self.winch_motor.set(0)
-                self.auto_state = "clawin"
-
-        # state "clawin": claw should be down to release tote/container
-        if self.auto_state == "clawin":
-            self.claw_down()
-            self.set_claw()
-            self.auto_state = "wait"
-
-        # state "wait": waits for the claw to pull away from the tote
-        if self.auto_state == "wait":
-            if self.positioned_count < 20:
-                self.positioned_count += 1
-            else:
-                self.positioned_count = 0
-                self.auto_state = "backup"
-
-        # state "backup": back up
-        if self.auto_state == "backup":
-            if self.positioned_count < 15:
-                self.forward(-1)
-                self.positioned_count += 1
-            else:
-                self.positioned_count = 0
-                self.auto_state = "finished"
-
     def forward(self, val):
         self.left_motor.set(-val)
         self.right_motor.set(val)
@@ -427,7 +190,7 @@ class Robot(wpilib.IterativeRobot):
 
     # Teleop Mode
     def teleopInit(self):
-        self.winch_setpoint = -self.winch_encoder.get()
+        self.winch_setpoint = self.get_winch_revs()
         self.reset_auto()
         self.raising_winch = False
 
@@ -464,7 +227,7 @@ class Robot(wpilib.IterativeRobot):
             self.raising_winch = False
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
-            if -self.winch_encoder.get() < 500:
+            if self.get_winch_revs() < 500:
                 self.winch_motor.set(self.winch_power.set(.5))
             else:
                 self.winch_power.force(0)
@@ -544,7 +307,7 @@ class Robot(wpilib.IterativeRobot):
         # Print current winch encoder value if right button 6 is pressed
         # This button also overrides winch encoder safety bounds
         if self.right_joystick.getRawButton(6):
-            revs = -self.winch_encoder.get()
+            revs = self.get_winch_revs()
             print('winch revolutions: ', revs)
 
         # Print current gyro value if left button 8 is pressed
@@ -628,12 +391,6 @@ class Robot(wpilib.IterativeRobot):
     def right_claw_whisker(self):
         return self.right_limit_switch.get()
 
-    def winch_encoder_min(self):
-        return self._winch_encoder_min
-
-    def winch_encoder_max(self):
-        return self._winch_encoder_min + 1162
-
     # Sets winch to move inputted direction
     # Maintains winch height if no winch input
     # Right joystick button 6 overrides encoder, button 7 resets encoder
@@ -696,7 +453,7 @@ class Robot(wpilib.IterativeRobot):
 
         # state "pickup": lift up to pick up container
         if self.auto_state == "pickup":
-            if -self.winch_encoder.get() < 500:
+            if self.get_winch_revs() < 500:
                 self.winch_motor.set(self.winch_power.set(.5))
             else:
                 self.winch_power.force(0)
