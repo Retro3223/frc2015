@@ -1,4 +1,38 @@
 import wpilib
+from itertools import chain
+
+
+class ParallelGenerators:
+    def __init__(self):
+        self.generators = {}
+        self.afters = {}
+
+    def add(self, name, generator):
+        self.generators[name] = iter(generator)
+
+    def after(self, succeed_name, precede_name):
+        if precede_name not in self.afters:
+            self.afters[precede_name] = []
+        self.afters[precede_name].append((succeed_name, self.generators[succeed_name]))
+        del self.generators[succeed_name]
+
+    def _remove_generator(self, name):
+        if name in self.afters:
+            for (new_name, generator) in self.afters[name]:
+                self.generators[new_name] = generator
+        del self.generators[name]
+
+    def next(self):
+        results = {}
+        items = list(self.generators.items())
+        for (name,g) in items:
+            try:
+                val = g.__next__()
+                results[name] = val
+            except StopIteration:
+                self._remove_generator(name)
+        return results
+
 
 
 def step(value, min_val):
@@ -35,6 +69,9 @@ class Robot(wpilib.IterativeRobot):
         # Initialize the drive motors
         self.left_motor = wpilib.Talon(0)
         self.right_motor = wpilib.Talon(1)
+
+        self.left_encoder = wpilib.Encoder(6, 7)
+        self.right_encoder = wpilib.Encoder(8, 9)
 
         # Initialize the drive system
         self.robotdrive = wpilib.RobotDrive(self.left_motor, self.right_motor)
@@ -85,20 +122,26 @@ class Robot(wpilib.IterativeRobot):
         self.right_optical_sensor = wpilib.DigitalInput(4)
 
         # Initialize the limit switches
-        self.left_limit_switch = wpilib.DigitalInput(6)
-        self.right_limit_switch = wpilib.DigitalInput(5)
+        self.left_limit_switch = wpilib.DigitalInput(5)
+        self.right_limit_switch = self.left_limit_switch #wpilib.DigitalInput(6)
 
         # Initialize the compressor watchdog
         self.dog = wpilib.MotorSafety()
+        #self.dog.setExpiration(1.75)
         self.dog.setSafetyEnabled(False)
-        self.dog.setExpiration(1.75)
 
         # Select which autonomous mode: "tote", "container", "tripletote"
-        self.auto_mode = "container"
+        self.auto_mode = "3-tote-straight"
 
     # Autonomous Mode
     def autonomousInit(self):
+        assert self.auto_mode in [
+            'container',
+            "tote",
+            '3-tote-straight',
+        ]
         self.compressor.start()
+        self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
 
         self.auto_state = "start"
         self.positioned_count = 0
@@ -106,16 +149,82 @@ class Robot(wpilib.IterativeRobot):
             pass
         elif self.auto_mode == "tote":
             self.auto = iter(self.autoTotePeriodic2())
+        elif self.auto_mode == '3-tote-straight':
+            self.auto = ParallelGenerators()
+            self.claw_down()
+            self.auto.add("claw", self.maintain_claw())
+            self.auto.add("pickup1", self.auto_pickup_tote(1))
+            self.auto.add("winch", self.maintain_winch())
+            self.auto.after("winch", "pickup1")
+            self.auto.add("drive1", self.auto_drive_until_tote(1))
+            self.auto.after("drive1", "pickup1")
+            self.auto.add("drop1", self.drop_tote())
+            self.auto.after("drop1", 'drive1')
+            self.auto.add("drive1.5", self.auto_drive_until_liftable(1))
+            self.auto.after("drive1.5", "drop1")
 
     # Runs an autonomous mode method based on the selected mode
     def autonomousPeriodic(self):
         self.dog.feed()
         if self.auto_mode == "tote":
             self.auto.__next__()
+        elif self.auto_mode == '3-tote-straight':
+            self.auto.next()
         elif self.auto_mode == "container":
             self.auto_container_periodic()
         elif self.auto_mode == "tripletote":
             self.auto_tote_periodic()
+
+    def maintain_claw(self):
+        while True:
+            self.set_claw()
+            yield
+
+    def maintain_winch(self):
+        while True:
+            self.winch_set(0)
+            yield
+
+    def get_winch_revs(self):
+        return -self.winch_encoder.get()
+
+    def auto_pickup_tote(self, tote_height):
+        tote_revs = 320
+        assert self.get_winch_revs() < 20
+        self.winch_setpoint = self.winch_setpoint_zero + tote_revs * tote_height
+        durped = False
+        while self.get_winch_revs() < self.winch_setpoint:
+            if not durped and self.get_winch_revs() >= 70:
+                self.claw_up()
+                durped = True
+            self.winch_set(1.0)
+            yield
+
+    def auto_drive_until_tote(self, tote_number):
+        revs0 = self.right_encoder.get()
+        while True:
+            val = self.right_encoder.get()
+            if val > revs0 + 1418:
+                break
+            self.forward(0.7)
+            yield
+        self.auto.after("winch", "drop%s" % tote_number)
+        yield
+
+    def auto_drive_until_liftable(self, tote_number):
+        while not self.left_claw_whisker():
+            self.forward(0.3)
+            yield
+
+    def drop_tote(self):
+        self.winch_setpoint = self.winch_setpoint_zero
+        durped = False
+        while self.get_winch_revs() > self.winch_setpoint_zero + 10:
+            if not durped and self.get_winch_revs() <= 15:
+                self.claw_down()
+                durped = True
+            self.winch_set(-1.0)
+            yield
 
     def turnBackLeft(self):
         angle0 = self.gyro.getAngle()
@@ -340,8 +449,8 @@ class Robot(wpilib.IterativeRobot):
 
         # Prints limit switch sensor values when left button 6 is pressed
         if self.left_joystick.getRawButton(6):
-            print("left limit: ", self.left_claw_whisker())
-            print("right limit: ", self.right_claw_whisker())
+            print("left limit switch: ", self.left_claw_whisker())
+            print("right limit switch: ", self.right_claw_whisker())
 
         # Prints ultrasonic sensor values when left button 10 is pressed
         if self.left_joystick.getRawButton(10):
@@ -352,8 +461,8 @@ class Robot(wpilib.IterativeRobot):
 
         # Prints optical sensor values when left button 11 is pressed
         if self.left_joystick.getRawButton(11):
-            print("left_optical_sensor: ", self.right_optical_sensor.get())
-            print("right_optical_sensor: ", self.right_optical_sensor.get())
+            print("left encoder: ", self.left_encoder.get())
+            print("right encoder: ", self.right_encoder.get())
 
         # Print current winch encoder value if right button 6 is pressed
         # This button also overrides winch encoder safety bounds
