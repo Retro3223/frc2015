@@ -1,4 +1,4 @@
-from tiredrive.robot import ParallelGenerators
+from tiredrive.parallel_generators import ParallelGenerators
 
 
 def test_parallel_generators():
