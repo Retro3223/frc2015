@@ -1,6 +1,6 @@
 import pytest
 import math
-from kiwidrive.kiwidrive import (
+from kiwidrive.kiwi import (
     normalize_joystick_axes,
     get_wheel_magnitudes,
 )

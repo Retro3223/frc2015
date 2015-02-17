@@ -20,7 +20,3 @@ install:
 
 script:
     - ./travis.sh $TESTS
-
-matrix:
-    allow_failures:
-        - env: TESTS=kiwidrive-unittests 

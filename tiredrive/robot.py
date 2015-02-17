@@ -7,8 +7,10 @@ class ParallelGenerators:
         self.generators = {}
         self.afters = {}
 
-    def add(self, name, generator):
+    def add(self, name, generator, after=None):
         self.generators[name] = iter(generator)
+        if after is not None:
+            self.after(name, after)
 
     def after(self, succeed_name, precede_name):
         if precede_name not in self.afters:
@@ -17,7 +19,7 @@ class ParallelGenerators:
             (succeed_name, self.generators[succeed_name]))
         del self.generators[succeed_name]
 
-    def _remove_generator(self, name):
+    def cancel(self, name):
         if name in self.afters:
             for (new_name, generator) in self.afters[name]:
                 self.generators[new_name] = generator
@@ -31,7 +33,7 @@ class ParallelGenerators:
                 val = g.__next__()
                 results[name] = val
             except StopIteration:
-                self._remove_generator(name)
+                self.cancel(name)
         return results
 
 
@@ -117,6 +119,7 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the winch encoder
         self.winch_encoder = wpilib.Encoder(1, 2)
+        self._winch_encoder_min = 8
 
         self.last_winch_signal = 0
 
@@ -625,18 +628,24 @@ class Robot(wpilib.IterativeRobot):
     def right_claw_whisker(self):
         return self.right_limit_switch.get()
 
+    def winch_encoder_min(self):
+        return self._winch_encoder_min
+
+    def winch_encoder_max(self):
+        return self._winch_encoder_min + 1162
+
     # Sets winch to move inputted direction
     # Maintains winch height if no winch input
     # Right joystick button 6 overrides encoder, button 7 resets encoder
-    def winch_set(self, winch_signal):
+    def winch_set(self, signal):
         """
         Set winch controller safely by taking max and min encoder values
         into account, unless you're pressing the override button
         (right joystick, button 6)
 
-        winch_signal=0 -> maintain winch position
-        winch_signal>0 -> winch up?
-        winch_signal<0 -> winch down?
+        signal=0 -> maintain winch position
+        signal>0 -> winch up?
+        signal<0 -> winch down?
         """
 
         # Reset winch encoder value to 0 if right button 7 is pressed
@@ -644,25 +653,25 @@ class Robot(wpilib.IterativeRobot):
             self.winch_encoder.reset()
 
         # Initializes "revs" to the winch encoder's current value
-        revs = -self.winch_encoder.get()
+        revs = self.get_winch_revs()
 
         # Sets "winch_setpoint" when driver takes finger off winch button
-        if self.last_winch_signal != 0 and winch_signal == 0:
+        if self.last_winch_signal != 0 and signal == 0:
             self.winch_setpoint = revs
-        self.last_winch_signal = winch_signal
+        self.last_winch_signal = signal
 
         # If no winch signal, maintain winch's height position
         # Else moves winch according to winch signal
-        if winch_signal == 0:
+        if signal == 0:
             val = 0.1 - 0.01 * (revs - self.winch_setpoint)
         else:
             # Pressing right button 6 overrides winch's safety bounds
             if not (self.right_joystick.getRawButton(6)):
                 # Stop the winch if it is going out of bounds
-                if (winch_signal > 0.1 and revs >= 1170) or \
-                        (winch_signal < -0.1 and revs <= 8):
-                    winch_signal = 0
-            val = 0.5 * winch_signal
+                if (((signal > 0.1 and revs >= self.winch_encoder_max()) or
+                     (signal < -0.1 and revs <= self.winch_encoder_min()))):
+                    signal = 0
+            val = 0.5 * signal
 
         # Sets the winch motor's value
         self.winch_motor.set(self.winch_power.set(val))
