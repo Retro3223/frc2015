@@ -1,6 +1,7 @@
 from mock import Mock
 from tiredrive.robot import Robot, Smooth, ParallelGenerators
 
+
 def test_robot1():
     robot = Robot()
     robot.robotInit()
@@ -127,7 +128,8 @@ def test_3_totes():
     robot.winch_motor.set.assert_called_with(0.1)
     """
 
+
 def test_smooth():
-    smoothie  = Smooth(0, 0.1)
+    smoothie = Smooth(0, 0.1)
     for i in range(5):
         assert .1 * (i+1) == smoothie.set(0.5)
