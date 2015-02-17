@@ -1,2 +1,2 @@
-py tiredrive\robot.py deploy --skip-tests
+py tiredrive\robot.py deploy
 pause

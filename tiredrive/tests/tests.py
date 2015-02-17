@@ -1,6 +1,5 @@
 from mock import Mock
-from tiredrive.robot import Robot, ParallelGenerators
-
+from tiredrive.robot import Robot, Smooth, ParallelGenerators
 
 def test_robot1():
     robot = Robot()
@@ -10,9 +9,9 @@ def test_robot1():
     robot.winch_motor = Mock(robot.winch_motor)
     robot.winch_motor.set = Mock()
     robot.winch_set(-0.5)
-    robot.winch_motor.set.assert_called_with(-0.25)
+    robot.winch_motor.set.assert_called_with(-0.1)
     robot.winch_set(0.0)
-    robot.winch_motor.set.assert_called_with(0.1)
+    robot.winch_motor.set.assert_called_with(0.0)
     assert robot.winch_setpoint == 500
     robot.winch_encoder.get = Mock(return_value=-1200)
     robot.winch_set(-0.5)
@@ -26,7 +25,7 @@ def test_robot2():
     robot.winch_motor = Mock(robot.winch_motor)
     robot.winch_motor.set = Mock()
     robot.winch_set(0.5)
-    robot.winch_motor.set.assert_called_with(0.25)
+    robot.winch_motor.set.assert_called_with(0.1)
     robot.winch_encoder.get = Mock(return_value=-1200)
     robot.winch_set(0.5)
     robot.winch_motor.set.assert_called_with(0)
@@ -67,8 +66,7 @@ def test_3_totes():
     robot.winch_encoder = Mock(robot.winch_encoder)
     robot.winch_encoder.get = Mock(return_value=-8)
     assert 8 == robot.get_winch_revs()
-    robot.winch_motor = Mock(robot.winch_motor)
-    robot.winch_motor.set = Mock()
+    robot.winch_set = Mock()
     robot.forward = Mock()
     robot.right_ultrasonic_sensor.getValue = Mock(return_value=300)
     robot.auto_mode = "3-tote-straight"
@@ -81,22 +79,23 @@ def test_3_totes():
     robot.autonomousPeriodic()
     assert robot.winch_setpoint == 328
     assert "pickup1" in robot.auto.generators
-    robot.winch_motor.set.assert_called_with(0.5)
+    robot.winch_set.assert_called_with(1.0)
+    robot.autonomousPeriodic()
 
     robot.winch_encoder.get.return_value = -299
     robot.autonomousPeriodic()
 
     assert "pickup1" in robot.auto.generators
-    robot.winch_motor.set.assert_called_with(0.5)
+    robot.winch_set.assert_called_with(1.0)
     robot.winch_encoder.get.return_value = -390
     robot.autonomousPeriodic()
 
-    robot.winch_motor.set.assert_called_with(0.5)
+    robot.winch_set.assert_called_with(1.0)
     assert "pickup1" not in robot.auto.generators
     assert "drive1" in robot.auto.generators
 
     robot.autonomousPeriodic()
-    robot.winch_motor.set.assert_called_with(0.1)
+    robot.winch_set.assert_called_with(0)
     assert "drive1" in robot.auto.generators
 
     assert "claw" in robot.auto.generators
@@ -104,7 +103,7 @@ def test_3_totes():
     assert "pickup1" not in robot.auto.generators
     robot.autonomousPeriodic()
     assert "drive1" in robot.auto.generators
-    robot.winch_motor.set.assert_called_with(0.1)
+    robot.winch_set.assert_called_with(0)
     robot.forward.assert_called_with(0.7)
     robot.right_ultrasonic_sensor.getValue.return_value = 140
     robot.autonomousPeriodic()
@@ -127,3 +126,8 @@ def test_3_totes():
     robot.autonomousPeriodic()
     robot.winch_motor.set.assert_called_with(0.1)
     """
+
+def test_smooth():
+    smoothie  = Smooth(0, 0.1)
+    for i in range(5):
+        assert .1 * (i+1) == smoothie.set(0.5)
