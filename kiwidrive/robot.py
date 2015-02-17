@@ -1,5 +1,5 @@
 import wpilib
-from kiwidrive import KiwiDrive
+from kiwi import KiwiDrive
 
 
 class Robot(wpilib.IterativeRobot):
