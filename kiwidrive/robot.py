@@ -1,5 +1,5 @@
 import wpilib
-from kiwi import KiwiDrive
+import kiwidrive.kiwi as kiwi
 
 
 class Robot(wpilib.IterativeRobot):
@@ -8,7 +8,7 @@ class Robot(wpilib.IterativeRobot):
         self.motor1 = wpilib.Talon(0)
         self.motor2 = wpilib.Talon(1)
         self.motor3 = wpilib.Talon(2)
-        self.kiwidrive = KiwiDrive(
+        self.kiwidrive = kiwi.KiwiDrive(
             self.joystick1,
             [self.motor1,
              self.motor2,

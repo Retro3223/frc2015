@@ -1,16 +1,16 @@
 import math
 import wpilib
-from xbox import XboxController
-from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+import kiwidrive.xbox as joy
+import kiwidrive.strategies as strats
 
 try:
     import numpy as np
     M = np.array(
-        [[-0.5, 0.0],
-         [1.0, -1.0 / math.sqrt(3)],
-         [1.0, 1.0 / math.sqrt(3)]])
+        [[-1.6,  0.0],
+         [ 1.0, -1.0 / math.sqrt(3)],
+         [ 1.0,  1.0 / math.sqrt(3)]])
 except ImportError:
-    print("no numpy, hope you aren't trying to use kiwidrive")
+    print("no numpy; hope you aren't trying to use kiwidrive")
 
 
 def get_wheel_magnitudes(v, m=None):
@@ -76,8 +76,7 @@ class KiwiDrive:
         """
 
         # Initialize the Joystick
-        self.joystick = joystick
-        self.xbox = XboxController(self.joystick)
+        self.joy = joy.XboxController(joystick)
 
         # Initialize the drive motors
         assert len(motors) == 3
@@ -87,7 +86,6 @@ class KiwiDrive:
 
         # modify values for better driving
         self.m = np.copy(M)
-        self.m[0][0] = -1.6
         self.m[:, 1] *= 1.3  # make forward a bit faster
         self.m[:, 0] *= 0.8  # make strafe a bit slower
         self.motor_bias = 0.8
@@ -144,9 +142,9 @@ class KiwiDrive:
 
         # Initialize autonomous strategies
         self.strategies = {}
-        Auto3StraightStrategy(self)
-        TurnStrategy(self)
-        ContainerStrategy(self)
+        strats.Auto3StraightStrategy(self)
+        strats.TurnStrategy(self)
+        strats.ContainerStrategy(self)
 
     def autonomousInit(self, auto_mode):
         """
@@ -210,28 +208,26 @@ class KiwiDrive:
         return int(self.gyro.pidGet())
 
     def Drive(self):
-        x = step(self.xbox.left_joystick_axis_h(), 0)
-        y = step(self.xbox.left_joystick_axis_v(), 0)
+        x = self.joy.analog_drive_x()
+        y = self.joy.analog_drive_y()
         # rot is +1.0 for right trigger, -1.0 for left
-        rot = self.xbox.right_bump() + -self.xbox.left_bump()
+        rot = self.joy.analog_rot()
         self.RawDrive(x, y, rot)
 
         # Feed winch controller raw values from the joystick
-        # Right joystick button 3 raises winch, button 2 lowers winch
-        winch_signal = self.xbox.right_trigger() + \
-            -self.xbox.left_trigger()
+        winch_signal = self.joy.analog_winch()
         # Right joystick button 6 overrides encoder,
         # button 7 resets encoder
         self.winch_set(winch_signal)
 
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
-        arm_signal = self.xbox.Y() + -self.xbox.B()
+        arm_signal = self.joy.analog_arm()
         self.arm_motor.set(self.arm_power.set(arm_signal * .3))
 
         # Handle piston in and out
         # Right joystick trigger button toggles claw in or out
-        if self.xbox.A():
+        if self.joy.digital_claw():
             self.claw_toggle = True
         elif self.claw_toggle:
             self.claw_toggle = False
@@ -239,7 +235,7 @@ class KiwiDrive:
             self.set_claw()
 
         # If the right joystick slider is down, also run test mode
-        if self.xbox.B():
+        if self.joy.digital_test():
             self.test_mode()
 
     def test_mode(self):
@@ -247,7 +243,7 @@ class KiwiDrive:
         # Test Mode
         # calculates and prints values to be used in testing
         """
-        print('legalize crystal f*cking weed')
+        print('legalize crystal fucking weed')
 
         print('winch revolutions: ', self.get_winch_revs())
 
@@ -335,7 +331,7 @@ class KiwiDrive:
         """
 
         # Reset winch encoder value to 0 if right button 7 is pressed
-        if self.xbox.X():
+        if self.joy.digital_winch_encoder_reset():
             self.winch_encoder.reset()
 
         # Initializes "revs" to the winch encoder's current value
@@ -352,7 +348,7 @@ class KiwiDrive:
             val = 0.1 - 0.01 * (revs - self.winch_setpoint)
         else:
             # Pressing right button 6 overrides winch's safety bounds
-            if not (self.xbox.X()):
+            if not (self.joy.digital_winch_override()):
                 # Stop the winch if it is going out of bounds
                 if (((signal > 0.1 and revs >= self.winch_encoder_max()) or
                      (signal < -0.1 and revs <= self.winch_encoder_min()))):

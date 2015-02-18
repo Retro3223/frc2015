@@ -1,5 +1,5 @@
 import math
-import tiredrive.parallel_generators
+import kiwidrive.parallel_generators as pg
 
 
 class TurnStrategy:
@@ -9,7 +9,7 @@ class TurnStrategy:
         self.robot.strategies['tote'] = self
 
     def autonomousInit(self):
-        self.auto = parallel_generators.ParallelGenerators()
+        self.auto = pg.ParallelGenerators()
         self.auto.add("back_left", self.turn_back_left())
         self.auto.add("forward1", self.forward1(), after="back_left")
         self.auto.add("brake1", self.brake1(), after="forward1")
@@ -84,7 +84,7 @@ class Auto3StraightStrategy:
         self.robot.strategies['3-tote-straight'] = self
 
     def autonomousInit(self):
-        auto = ParallelGenerators()
+        auto = pg.ParallelGenerators()
         self.robot.claw_down()
         self.winch_value = 0.0
         auto.add("claw", self.robot.maintain_claw())
