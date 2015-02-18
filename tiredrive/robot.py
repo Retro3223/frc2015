@@ -1,6 +1,6 @@
 import wpilib
 import math
-from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+from tiredrive.strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
@@ -122,7 +122,7 @@ class Robot(wpilib.IterativeRobot):
         TurnStrategy(self)
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
-        # Select which autonomous mode: "tote", "container", "tripletote"
+        # Select which autonomous mode: "tote", "container-overwhite", "container-nowhite", "tripletote"
         self.auto_mode = "container-overwhite"
 
     # Autonomous Mode
