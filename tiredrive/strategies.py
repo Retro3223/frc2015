@@ -1,3 +1,4 @@
+import math
 from parallel_generators import ParallelGenerators
 
 
@@ -188,9 +189,8 @@ class ContainerStrategy:
         # state "lift": lift up to pick up container
         if self.auto_state == "lift":
             if robot.get_winch_revs() < 500:
-                robot.winch_motor.set(robot.winch_power.set(.5))
+                robot.winch_motor.set(.5)
             else:
-                robot.winch_power.force(0)
                 self.auto_state = "clawout"
 
         # state "clawout": push out solenoid
@@ -257,4 +257,23 @@ class ContainerStrategy:
             self.robot.brake_rotation()
         else:
             return True
+        return False
+
+    # Turn should have a slow down so it stops at angle perfectly
+    def turn(self, angle):
+        slow_down_angle = 30
+
+        remaining_angle = angle - abs(self.robot.gyro.getAngle()) % 360
+
+        if abs(remaining_angle) < 1 and abs(self.robot.gyro.getRate()) < .1:
+            return True
+        elif abs(remaining_angle) > slow_down_angle:
+            value = 1
+        else:
+            value = (math.sin(remaining_angle *
+                              (180/slow_down_angle) - 90) + 1) / 2
+
+        value = math.copysign(value, remaining_angle)
+
+        self.robot.pivot_clockwise(value)
         return False

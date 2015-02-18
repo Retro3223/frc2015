@@ -14,11 +14,14 @@ class Robot(wpilib.IterativeRobot):
              self.motor2,
              self.motor3])
 
+        # Select which autonomous mode: "tote", "container", "tripletote"
+        self.auto_mode = "3-tote-straight"
+
     def autonomousInit(self):
-        pass
+        self.kiwidrive.autonomousInit(self.auto_mode)
 
     def autonomousPeriodic(self):
-        pass
+        self.kiwidrive.autonomousPeriodic()
 
     def teleopInit(self):
         self.kiwidrive.Enable()
