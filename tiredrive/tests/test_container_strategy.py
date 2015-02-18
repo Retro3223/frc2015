@@ -9,7 +9,7 @@ def test_container_state_transitions():
     robot.winch_encoder.get = Mock(return_value=-8)
     robot.winch_set = Mock()
     robot.forward = Mock()
-    robot.auto_mode = "container"
+    robot.auto_mode = "container-overwhite"
     robot.autonomousInit()
 
     strategy = robot.strategies[robot.auto_mode]
@@ -20,9 +20,9 @@ def test_container_state_transitions():
 
     robot.get_winch_revs = Mock(return_value=500)
     robot.autonomousPeriodic()
-    assert strategy.auto_state == "turn"
+    assert strategy.auto_state == "drive"
     robot.autonomousPeriodic()
-    assert strategy.auto_state == "turn"
+    assert strategy.auto_state == "drive"
 
     strategy.turn_brake = Mock(return_value=True)
     robot.autonomousPeriodic()
@@ -40,6 +40,6 @@ def test_container_state_transitions():
     robot.autonomousPeriodic()
     assert strategy.auto_state == "backup"
 
-    strategy.positioned_count = 15
+    strategy.positioned_count = 40
     robot.autonomousPeriodic()
     assert strategy.auto_state == "finished"

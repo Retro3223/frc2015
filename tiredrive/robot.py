@@ -120,17 +120,14 @@ class Robot(wpilib.IterativeRobot):
         self.strategies = {}
         Auto3StraightStrategy(self)
         TurnStrategy(self)
-        ContainerStrategy(self)
+        ContainerStrategy(self, True)
+        ContainerStrategy(self, False)
         # Select which autonomous mode: "tote", "container", "tripletote"
-        self.auto_mode = "3-tote-straight"
+        self.auto_mode = "container"
 
     # Autonomous Mode
     def autonomousInit(self):
-        assert self.auto_mode in [
-            'container',
-            "tote",
-            '3-tote-straight',
-        ]
+        assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
 
