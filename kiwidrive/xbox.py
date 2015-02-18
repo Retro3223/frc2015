@@ -49,3 +49,6 @@ class XboxController:
 
     def left_trigger(self):
         return self.joystick.getRawAxis(2)
+
+    def d_pad(self):
+        return self.joystick.getPOV()

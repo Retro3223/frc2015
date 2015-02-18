@@ -12,11 +12,9 @@ def step(value, min_val):
     return value
 
 
-# Returns "value" unless its out of range (not between "min_val" and
-# "max_val"), then it returns "default"
 def step_range(value, min_val, max_val, default):
     """
-    Returns "value" unless its out of range (not between "min" and "max"),
+    Returns "value" unless its out of range (not between "min_val" and "max_val"),
     then it returns "default
     """
     if not (min_val <= value <= max_val):
@@ -24,9 +22,11 @@ def step_range(value, min_val, max_val, default):
     return value
 
 
-# Class to maintain state for slow start up and slow down of motors
-# to reduce jerkiness
 class Smooth:
+    """
+    # Class to maintain state for slow start up and slow down of motors
+    # to reduce jerkiness
+    """
     def __init__(self, val, stp):
         self.value = val
         self.step = stp
@@ -51,6 +51,7 @@ class Robot(wpilib.IterativeRobot):
         """
         Initialize all of the sensors and controllers on the robot
         """
+
         # Initialize the Joysticks
         self.left_joystick = wpilib.Joystick(0)
         self.right_joystick = wpilib.Joystick(1)
@@ -67,7 +68,6 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the winch motor
         self.winch_motor = wpilib.Talon(2)
-        self.winch_power = Smooth(0.0, 0.1)
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
@@ -123,7 +123,7 @@ class Robot(wpilib.IterativeRobot):
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
         # Select which autonomous mode: "tote", "container", "tripletote"
-        self.auto_mode = "container"
+        self.auto_mode = "container-overwhite"
 
     # Autonomous Mode
     def autonomousInit(self):
@@ -134,8 +134,10 @@ class Robot(wpilib.IterativeRobot):
         self.auto_state = "start"
         self.strategies[self.auto_mode].autonomousInit()
 
-    # Runs an autonomous mode method based on the selected mode
     def autonomousPeriodic(self):
+        """
+        # Runs an autonomous mode method based on the selected mode
+        """
         self.dog.feed()
         self.strategies[self.auto_mode].autonomousPeriodic()
 
@@ -158,25 +160,6 @@ class Robot(wpilib.IterativeRobot):
     def winch_encoder_max(self):
         return self._winch_encoder_min + 1162
 
-    # Turn should have a slow down so it stops at angle perfectly
-    def turn(self, angle):
-        slow_down_angle = 30
-
-        remaining_angle = angle - abs(self.gyro.getAngle()) % 360
-
-        if abs(remaining_angle) < 1 and abs(self.gyro.getRate()) < .1:
-            return True
-        elif abs(remaining_angle) > slow_down_angle:
-            value = 1
-        else:
-            value = (math.sin(remaining_angle *
-                              (180/slow_down_angle) - 90) + 1) / 2
-
-        value = math.copysign(value, remaining_angle)
-
-        self.robotdrive.tankDrive(-value, value)  # rotate
-        return False
-
     def forward(self, val):
         self.left_motor.set(-val)
         self.right_motor.set(val)
@@ -188,22 +171,9 @@ class Robot(wpilib.IterativeRobot):
     # Teleop Mode
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
-        self.reset_auto()
-        self.raising_winch = False
-
         self.compressor.start()
 
     def teleopPeriodic(self):
-        # Override everything (prevents all teleop) and run
-        # autonomously to pick up tote
-        # Press and hold button 6
-        if self.left_joystick.getRawButton(6):
-            self.auto_pickup()
-            return
-        # Pressing button 7 will reset auto_pickup's process
-        if self.auto_state == "finished" or self.left_joystick.getRawButton(7):
-            self.reset_auto()
-
         # If left trigger pulled, run brake algorithm,
         # otherwise use joystick values to drive
         if self.left_joystick.getRawButton(1):
@@ -217,26 +187,13 @@ class Robot(wpilib.IterativeRobot):
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)
 
-        # Raise winch subroutine
-        if self.right_joystick.getRawButton(5):
-            self.raising_winch = True
-        if self.right_joystick.getRawButton(4):
-            self.raising_winch = False
-        # Keeps raising winch while other teleop occurs
-        if self.raising_winch:
-            if self.get_winch_revs() < 500:
-                self.winch_motor.set(self.winch_power.set(.5))
-            else:
-                self.winch_power.force(0)
-                self.raising_winch = False
-        else:
-            # Feed winch controller raw values from the joystick
-            # Right joystick button 3 raises winch, button 2 lowers winch
-            winch_signal = self.right_joystick.getRawButton(3) + \
-                -self.right_joystick.getRawButton(2)
-            # Right joystick button 6 overrides encoder,
-            # button 7 resets encoder
-            self.winch_set(winch_signal)
+        # Feed winch controller raw values from the joystick
+        # Right joystick button 3 raises winch, button 2 lowers winch
+        winch_signal = self.right_joystick.getRawButton(3) + \
+            -self.right_joystick.getRawButton(2)
+        # Right joystick button 6 overrides encoder,
+        # button 7 resets encoder
+        self.winch_set(winch_signal)
 
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
@@ -262,9 +219,12 @@ class Robot(wpilib.IterativeRobot):
     def testPeriodic(self):
         pass
 
-    # Test Mode
-    # calculates and prints values to be used in testing
     def test_mode(self):
+        """
+        # Test Mode
+        # calculates and prints values to be used in testing
+        """
+
         # Calculate x and y distance travelled using accelerometer
         a_x = self.accel.getX()
         self.a_x_sum += a_x
@@ -317,10 +277,6 @@ class Robot(wpilib.IterativeRobot):
         if self.left_joystick.getRawButton(9):
             self.gyro.reset()
 
-        if self.right_joystick.getRawButton(2) or \
-                self.right_joystick.getRawButton(3):
-            print('winch power: ', self.winch_power.value)
-
         if self.left_joystick.getRawButton(2) or \
                 self.left_joystick.getRawButton(3):
             print('arm power: ', self.arm_power.value)
@@ -331,9 +287,11 @@ class Robot(wpilib.IterativeRobot):
 
     # Helper Functions
 
-    # Set "left" and "right" variables to the left and right
-    # joystick outputs provided they are more than "joystick_threshold"
     def drive_values(self):
+        """
+        # Set "left" and "right" variables to the left and right
+        # joystick outputs provided they are more than "joystick_threshold"
+        """
         joystick_threshold = 0.2
         left = step(
             self.left_joystick.getRawAxis(1),
@@ -370,17 +328,23 @@ class Robot(wpilib.IterativeRobot):
         wheel_motion = -accel_y * .1
         return wheel_motion, wheel_motion
 
-    # Moves claw into "claw_state" position
     def set_claw(self):
+        """
+        # Moves claw into "claw_state" position
+        """
         self.solenoid1.set(not self.claw_state)
         self.solenoid2.set(self.claw_state)
 
-    # Pushes claw out
     def claw_up(self):
+        """
+        # Pushes claw out
+        """
         self.claw_state = False
 
-    # Pulls claw in
     def claw_down(self):
+        """
+        # Pulls claw in
+        """
         self.claw_state = True
 
     def left_claw_whisker(self):
@@ -389,9 +353,6 @@ class Robot(wpilib.IterativeRobot):
     def right_claw_whisker(self):
         return self.right_limit_switch.get()
 
-    # Sets winch to move inputted direction
-    # Maintains winch height if no winch input
-    # Right joystick button 6 overrides encoder, button 7 resets encoder
     def winch_set(self, signal):
         """
         Set winch controller safely by taking max and min encoder values
@@ -429,39 +390,7 @@ class Robot(wpilib.IterativeRobot):
             val = 0.5 * signal
 
         # Sets the winch motor's value
-        self.winch_motor.set(self.winch_power.set(val))
-
-    def reset_auto(self):
-        self.auto_state = "start"
-        self.winch_power.force(0)
-
-    def auto_pickup(self):
-        # state "start": pull in solenoid
-        if self.auto_state == "start":
-            self.claw_down()
-            self.set_claw()
-            self.auto_state = "drive"
-
-        # state "drive": drive forward
-        if self.auto_state == "drive":
-            if not self.left_claw_whisker() and not self.right_claw_whisker():
-                self.forward(0.5)
-            else:
-                self.auto_state = "pickup"
-
-        # state "pickup": lift up to pick up container
-        if self.auto_state == "pickup":
-            if self.get_winch_revs() < 500:
-                self.winch_motor.set(self.winch_power.set(.5))
-            else:
-                self.winch_power.force(0)
-                self.auto_state = "clawout"
-
-        # state "clawout": push out solenoid
-        if self.auto_state == "clawout":
-            self.claw_up()
-            self.set_claw()
-            self.auto_state = "finished"
+        self.winch_motor.set(val)
 
 
 if __name__ == "__main__":

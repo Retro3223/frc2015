@@ -1,3 +1,4 @@
+import math
 from parallel_generators import ParallelGenerators
 
 
@@ -192,9 +193,8 @@ class ContainerStrategy:
         # state "lift": lift up to pick up container
         if self.auto_state == "lift":
             if robot.get_winch_revs() < 500:
-                robot.winch_motor.set(robot.winch_power.set(.5))
+                robot.winch_motor.set(.5)
             else:
-                robot.winch_power.force(0)
                 self.auto_state = "clawout"
 
         # state "clawout": push out solenoid
