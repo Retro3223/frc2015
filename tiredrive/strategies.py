@@ -145,7 +145,8 @@ class Auto3StraightStrategy:
         robot.winch_setpoint = robot.winch_setpoint_zero
         while robot.get_winch_revs() > robot.winch_setpoint_zero + 10:
             self.winch_value = -1.0
-            if robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and ("drop%s" % i) in self.auto.generators:
+            if robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and \
+                    ("drop%s" % i) in self.auto.generators:
                 self.auto.add("back", self.backup())
                 # put drivei.5 behind "back"
                 x = self.auto.afters["drop%s" % i].pop()
