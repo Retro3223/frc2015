@@ -103,14 +103,16 @@ def test_3_totes():
         pick up prepositioned tote A,
         then drive forward until ~1 foot before next tote (B)
         then drop tote A on tote B
+        backup when claw is lowered a bit
         then drive forward until positioned to pick up tote B
+        pick up tote B
     """
     robot = Robot()
     robot.robotInit()
     robot.winch_encoder = Mock(robot.winch_encoder)
     robot.winch_encoder.get = Mock(return_value=-8)
-    robot.winch_set = Mock()
     robot.forward = Mock()
+    robot.winch_set = Mock()
     robot.right_ultrasonic_sensor.getValue = Mock(return_value=300)
     robot.auto_mode = "3-tote-straight"
     robot.autonomousInit()
@@ -118,56 +120,66 @@ def test_3_totes():
     auto = robot.strategies[robot.auto_mode].auto
 
     assert "claw" in auto.generators
-    assert "winch" not in auto.generators
+    assert "winch" in auto.generators
+
     assert "pickup1" in auto.generators
 
     robot.autonomousPeriodic()
-    assert robot.winch_setpoint == 328
+    robot.autonomousPeriodic()
+    assert robot.winch_setpoint == 338
     assert "pickup1" in auto.generators
-    robot.winch_set.assert_called_with(1.0)
+    assert_called_with_fuzzy(robot.winch_set, 1.0)
     robot.autonomousPeriodic()
 
     robot.winch_encoder.get.return_value = -299
     robot.autonomousPeriodic()
 
     assert "pickup1" in auto.generators
-    robot.winch_set.assert_called_with(1.0)
+    assert_called_with_fuzzy(robot.winch_set, 1.0)
     robot.winch_encoder.get.return_value = -390
     robot.autonomousPeriodic()
-
-    robot.winch_set.assert_called_with(1.0)
+    robot.autonomousPeriodic()
+    assert_called_with_fuzzy(robot.winch_set, 0.0)
     assert "pickup1" not in auto.generators
     assert "drive1" in auto.generators
 
+    robot.right_encoder.get = Mock(return_value=0)
+    robot.forward = Mock()
+
     robot.autonomousPeriodic()
     robot.winch_set.assert_called_with(0)
+    assert_called_with_fuzzy(robot.forward, 0.5)
     assert "drive1" in auto.generators
 
-    assert "claw" in auto.generators
-    assert "winch" in auto.generators
-    assert "pickup1" not in auto.generators
     robot.autonomousPeriodic()
     assert "drive1" in auto.generators
-    robot.winch_set.assert_called_with(0)
-    robot.forward.assert_called_with(0.7)
-    robot.right_ultrasonic_sensor.getValue.return_value = 140
+    robot.forward.assert_called_with(0.5)
+    robot.right_encoder.get = Mock(return_value=307)
     robot.autonomousPeriodic()
     robot.autonomousPeriodic()
-    """
     assert "drive1" not in auto.generators
     assert "drop1" in auto.generators
 
-    assert "claw" in auto.generators
-    assert "winch" not in auto.generators
-    assert "pickup1" not in auto.generators
-    assert "drive1" not in auto.generators
-
     robot.winch_encoder.get.return_value = -199
     robot.autonomousPeriodic()
-    robot.winch_motor.set.assert_called_with(-0.5)
-    robot.winch_encoder.get.return_value = -10
+    robot.winch_encoder.get.return_value = -13
+    robot.autonomousPeriodic()
+    assert "back" in auto.generators
+    assert "drive1.5" not in auto.generators
+    robot.autonomousPeriodic()
+    robot.right_encoder.get.return_value = 0
     robot.autonomousPeriodic()
     assert "drop1" not in auto.generators
+    for i in range(20):
+        robot.autonomousPeriodic()
+    assert "drive1.5" not in auto.generators
+    for i in range(10):
+        robot.autonomousPeriodic()
+    assert "drive1.5" in auto.generators
+    assert "pickup2" not in auto.generators
+    robot.winch_encoder.get.return_value = -10
+    robot.right_encoder.get.return_value = 61
     robot.autonomousPeriodic()
-    robot.winch_motor.set.assert_called_with(0.1)
-    """
+    assert "drive1.5" not in auto.generators
+    assert "pickup2" in auto.generators
+    robot.autonomousPeriodic()

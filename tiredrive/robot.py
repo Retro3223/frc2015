@@ -59,7 +59,7 @@ class Robot(wpilib.IterativeRobot):
         self.left_motor = wpilib.Talon(0)
         self.right_motor = wpilib.Talon(1)
 
-        self.left_encoder = wpilib.Encoder(6, 7)
+        self.left_encoder = wpilib.Encoder(5, 7)
         self.right_encoder = wpilib.Encoder(8, 9)
 
         # Initialize the drive system
@@ -71,7 +71,7 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
-        self.arm_power = Smooth(0.0, 0.01)
+        self.arm_power = Smooth(0.0, 0.05)
 
         # Initialize the accelerometer
         self.accel = wpilib.BuiltInAccelerometer()
@@ -108,7 +108,7 @@ class Robot(wpilib.IterativeRobot):
         self.right_optical_sensor = wpilib.DigitalInput(4)
 
         # Initialize the limit switches
-        self.left_limit_switch = wpilib.DigitalInput(5)
+        self.left_limit_switch = wpilib.DigitalInput(6)
         self.right_limit_switch = self.left_limit_switch
         # wpilib.DigitalInput(6)
 
@@ -245,7 +245,8 @@ class Robot(wpilib.IterativeRobot):
         # Left joystick button 3 goes forward, 2 goes backward
         arm_signal = self.left_joystick.getRawButton(3) + \
             -self.left_joystick.getRawButton(2)
-        self.arm_motor.set(self.arm_power.set(arm_signal))
+        val = self.arm_power.set(arm_signal)
+        self.arm_motor.set(val)
 
         # Handle piston in and out
         # Right joystick trigger button toggles claw in or out
@@ -288,7 +289,7 @@ class Robot(wpilib.IterativeRobot):
             self.a_y_count = 0
 
         # Prints limit switch sensor values when left button 6 is pressed
-        if self.left_joystick.getRawButton(6):
+        if self.left_joystick.getRawButton(4):
             print("left limit switch: ", self.left_claw_whisker())
             print("right limit switch: ", self.right_claw_whisker())
 

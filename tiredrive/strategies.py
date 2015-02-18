@@ -85,58 +85,80 @@ class Auto3StraightStrategy:
     def autonomousInit(self):
         auto = ParallelGenerators()
         self.robot.claw_down()
+        self.winch_value = 0.0
         auto.add("claw", self.robot.maintain_claw())
-        auto.add("pickup1", self.auto_pickup_tote(1))
-        auto.add("winch", self.robot.maintain_winch(), after="pickup1")
-        auto.add("drive1", self.auto_drive_until_tote(1), after="pickup1")
-        auto.add("drop1", self.drop_tote(), after="drive1")
-        auto.add("drive1.5", self.auto_drive_until_liftable(1), after="drop1")
+        auto.add("winch", self.maintain_winch())
+        auto.add("pickup1", self.auto_pickup_tote())
+        auto.add("drive1", self.auto_drive_until_tote(), after="pickup1")
+        auto.add("drop1", self.drop_tote(1), after="drive1")
+        auto.add("drive1.5", self.auto_drive_until_liftable(), after="drop1")
+        auto.add("pickup2", self.auto_pickup_tote(), after="drive1.5")
+        auto.add("drive2", self.auto_drive_until_tote(), after="pickup2")
+        auto.add("drop2", self.drop_tote(2), after="drive2")
+        auto.add("drive2.5", self.auto_drive_until_liftable(), after="drop2")
+        auto.add("pickup3", self.auto_pickup_tote(), after="drive2.5")
         self.auto = auto
 
     def autonomousPeriodic(self):
         self.auto.next()
 
-    def auto_pickup_tote(self, tote_count):
+    def auto_pickup_tote(self):
         robot = self.robot
-        tote_revs = 320
         assert robot.get_winch_revs() < 20
-        robot.winch_setpoint = robot.winch_setpoint_zero + \
-            tote_revs * tote_count
+        tote_revs = 330
+        robot.winch_setpoint = robot.winch_setpoint_zero + tote_revs
         durped = False
         while robot.get_winch_revs() < robot.winch_setpoint:
             if not durped and robot.get_winch_revs() >= 70:
                 robot.claw_up()
                 durped = True
-            robot.winch_set(1.0)
+            self.winch_value = 1.0
             yield
+        self.winch_value = 0.0
+        yield
 
-    def auto_drive_until_tote(self, tote_number):
+    def auto_drive_until_tote(self):
         robot = self.robot
         revs0 = robot.right_encoder.get()
         while True:
             val = robot.right_encoder.get()
-            if val > revs0 + 1418:
+            if val > revs0 + 306:
                 break
-            robot.forward(0.7)
+            robot.forward(0.5)
             yield
-        self.auto.after("winch", "drop%s" % tote_number)
         yield
 
-    def auto_drive_until_liftable(self, tote_number):
-        robot = self.robot
-        while not robot.left_claw_whisker():
-            robot.forward(0.3)
+    def maintain_winch(self):
+        while True:
+            self.robot.winch_set(self.winch_value)
             yield
 
-    def drop_tote(self):
+    def auto_drive_until_liftable(self):
+        robot = self.robot
+        revs0 = robot.right_encoder.get()
+        while robot.right_encoder.get() <= revs0 + 60:
+            robot.forward(0.5)
+            yield
+
+    def drop_tote(self, i):
         robot = self.robot
         robot.winch_setpoint = robot.winch_setpoint_zero
-        durped = False
         while robot.get_winch_revs() > robot.winch_setpoint_zero + 10:
-            if not durped and robot.get_winch_revs() <= 15:
-                robot.claw_down()
-                durped = True
-            robot.winch_set(-1.0)
+            self.winch_value = -1.0
+            if robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and ("drop%s" % i) in self.auto.generators:
+                self.auto.add("back", self.backup())
+                # put drivei.5 behind "back"
+                x = self.auto.afters["drop%s" % i].pop()
+                assert x[0] == ("drive%s.5" % i)
+                self.auto.afters["back"] = [x]
+            yield
+        robot.claw_down()
+        self.winch_value = 0.0
+        yield
+
+    def backup(self):
+        for i in range(30):
+            self.robot.forward(-0.4)
             yield
 
 
@@ -155,7 +177,6 @@ class ContainerStrategy:
         Note: run variable "auto_mode" should be set to "container"
         Current implementation can also pick up and score a single tote
         """
-        print('auto state: ', self.auto_state)
         robot = self.robot
         # state "start": claw should be down to pick up totes/containers
         if self.auto_state == "start":
@@ -188,7 +209,6 @@ class ContainerStrategy:
             if self.positioned_count < 190:
                 robot.forward(.6)
                 self.positioned_count += 1
-                # print('positioned_count: ', self.positioned_count)
                 robot.winch_motor.set(0.1 -
                                       0.01 * (robot.get_winch_revs() - 500))
             else:
@@ -230,7 +250,6 @@ class ContainerStrategy:
     # Simplest turn algorithm
     # Returns whether it is done turning
     def turn_brake(self, angle):
-        print('angle: ', abs(self.robot.gyro.getAngle()) % 360)
         if abs(self.robot.gyro.getAngle()) % 360 < angle:
             self.robot.pivot_clockwise(1)
         elif abs(self.robot.gyro.getRate()) > .01:
