@@ -171,6 +171,7 @@ class Robot(wpilib.IterativeRobot):
     # Teleop Mode
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
+        self.raising_winch = False
         self.compressor.start()
 
     def teleopPeriodic(self):
@@ -187,13 +188,25 @@ class Robot(wpilib.IterativeRobot):
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)
 
-        # Feed winch controller raw values from the joystick
-        # Right joystick button 3 raises winch, button 2 lowers winch
-        winch_signal = self.right_joystick.getRawButton(3) + \
-            -self.right_joystick.getRawButton(2)
-        # Right joystick button 6 overrides encoder,
-        # button 7 resets encoder
-        self.winch_set(winch_signal)
+        # Raise winch subroutine
+        if self.right_joystick.getRawButton(5):
+            self.raising_winch = True
+        if self.right_joystick.getRawButton(4):
+            self.raising_winch = False
+        # Keeps raising winch while other teleop occurs
+        if self.raising_winch:
+            if self.get_winch_revs() < 328:
+                self.winch_set(1.4)
+            else:
+                self.raising_winch = False
+        else:
+            # Feed winch controller raw values from the joystick
+            # Right joystick button 3 raises winch, button 2 lowers winch
+            winch_signal = self.right_joystick.getRawButton(3) + \
+                -self.right_joystick.getRawButton(2)
+            # Right joystick button 6 overrides encoder,
+            # button 7 resets encoder
+            self.winch_set(winch_signal)
 
         # Feed arm controller raw values from the joystick
         # Left joystick button 3 goes forward, 2 goes backward
