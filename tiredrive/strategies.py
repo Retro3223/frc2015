@@ -1,7 +1,7 @@
 import math
 from parallel_generators import ParallelGenerators
 
-
+"""
 class TurnStrategy:
 
     def __init__(self, robot):
@@ -76,12 +76,45 @@ class TurnStrategy:
             self.robot.left_motor.set(0)
             self.robot.right_motor.set(val)
             yield
+"""
+
+
+class TurnStrategy:
+
+    def __init__(self, robot):
+        self.robot = robot
+        self.robot.strategies['turn'] = self
+
+    def autonomousInit(self):
+        self.auto = ParallelGenerators()
+        self.auto.add("turn", self.turn(90))
+        self.auto.add("brake", self.brake(), after="turn")
+        self.auto.add("wait", self.wait(), after="brake")
+
+    def autonomousPeriodic(self):
+        self.auto.next()
+
+    def turn(self, angle):
+        while abs(self.robot.gyro.getAngle()) % 360 < angle:
+            self.robot.pivot_clockwise(1)
+            yield
+
+    def brake(self):
+        while abs(self.robot.gyro.getRate()) > .01:
+            left_wheel, right_wheel = self.robot.brake_rotation()
+            self.robot.robotdrive.tankDrive(left_wheel, right_wheel)
+            yield
+
+    def wait(self):
+        while True:
+            self.robot.forward(0)
+            yield
 
 
 class Auto3StraightStrategy:
     def __init__(self, robot):
         self.robot = robot
-        self.robot.strategies['3-tote-straight'] = self
+        self.robot.strategies['3-tote'] = self
 
     def autonomousInit(self):
         auto = ParallelGenerators()
@@ -135,7 +168,7 @@ class Auto3StraightStrategy:
     def auto_drive_until_liftable(self):
         robot = self.robot
         revs0 = robot.right_encoder.get()
-        while robot.right_encoder.get() <= revs0 + 70:
+        while not robot.right_claw_whisker() and not robot.left_claw_whisker():
             robot.forward(0.7)
             yield
 
@@ -159,7 +192,7 @@ class Auto3StraightStrategy:
         yield
 
     def backup(self):
-        for i in range(30):
+        for i in range(35):
             self.robot.forward(-0.7)
             yield
 

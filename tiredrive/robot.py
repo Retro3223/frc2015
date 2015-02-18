@@ -99,17 +99,9 @@ class Robot(wpilib.IterativeRobot):
         self.claw_state = True
         self.claw_toggle = False
 
-        # Initialize the ultrasonic sensors
-        self.left_ultrasonic_sensor = wpilib.AnalogInput(1)
-        self.right_ultrasonic_sensor = wpilib.AnalogInput(2)
-
-        # Initialize the optical sensors
-        self.left_optical_sensor = wpilib.DigitalInput(3)
-        self.right_optical_sensor = wpilib.DigitalInput(4)
-
         # Initialize the limit switches
         self.left_limit_switch = wpilib.DigitalInput(6)
-        self.right_limit_switch = self.left_limit_switch
+        self.right_limit_switch = wpilib.DigitalInput(4)
         # wpilib.DigitalInput(6)
 
         # Initialize the compressor watchdog
@@ -123,7 +115,7 @@ class Robot(wpilib.IterativeRobot):
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
         # Select which autonomous mode: "tote", "container-overwhite", "container-nowhite", "tripletote"
-        self.auto_mode = "3-tote-straight"
+        self.auto_mode = wpilib.SmartDashboard.getString("DB/String 0", "container-overwhite")
 
     # Autonomous Mode
     def autonomousInit(self):
@@ -269,13 +261,6 @@ class Robot(wpilib.IterativeRobot):
             print("left limit switch: ", self.left_claw_whisker())
             print("right limit switch: ", self.right_claw_whisker())
 
-        # Prints ultrasonic sensor values when left button 10 is pressed
-        if self.left_joystick.getRawButton(10):
-            print("left_ultrasonic_sensor: ",
-                  self.left_ultrasonic_sensor.getValue())
-            print("right_ultrasonic_sensor: ",
-                  self.right_ultrasonic_sensor.getValue())
-
         # Prints optical sensor values when left button 11 is pressed
         if self.left_joystick.getRawButton(11):
             print("left encoder: ", self.left_encoder.get())
@@ -367,10 +352,10 @@ class Robot(wpilib.IterativeRobot):
         self.claw_state = True
 
     def left_claw_whisker(self):
-        return self.left_limit_switch.get()
+        return not self.left_limit_switch.get()
 
     def right_claw_whisker(self):
-        return self.right_limit_switch.get()
+        return not self.right_limit_switch.get()
 
     def winch_set(self, signal):
         """
