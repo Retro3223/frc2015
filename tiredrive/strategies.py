@@ -1,5 +1,5 @@
 import math
-import tiredrive.parallel_generators
+from parallel_generators import ParallelGenerators
 
 
 class TurnStrategy:
@@ -105,7 +105,7 @@ class Auto3StraightStrategy:
 
     def auto_pickup_tote(self):
         robot = self.robot
-        assert robot.get_winch_revs() < 20
+        # assert robot.get_winch_revs() < 20
         tote_revs = 330
         robot.winch_setpoint = robot.winch_setpoint_zero + tote_revs
         durped = False
@@ -120,12 +120,10 @@ class Auto3StraightStrategy:
 
     def auto_drive_until_tote(self):
         robot = self.robot
-        revs0 = robot.right_encoder.get()
-        while True:
+        val = revs0 = robot.right_encoder.get()
+        while val < revs0 + 306:
             val = robot.right_encoder.get()
-            if val > revs0 + 306:
-                break
-            robot.forward(0.5)
+            robot.forward(0.7)
             yield
         yield
 
@@ -137,22 +135,24 @@ class Auto3StraightStrategy:
     def auto_drive_until_liftable(self):
         robot = self.robot
         revs0 = robot.right_encoder.get()
-        while robot.right_encoder.get() <= revs0 + 60:
-            robot.forward(0.5)
+        while robot.right_encoder.get() <= revs0 + 70:
+            robot.forward(0.7)
             yield
 
     def drop_tote(self, i):
         robot = self.robot
         robot.winch_setpoint = robot.winch_setpoint_zero
+        durp = False
         while robot.get_winch_revs() > robot.winch_setpoint_zero + 10:
             self.winch_value = -1.0
-            if robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and \
+            if not durp and robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and \
                     ("drop%s" % i) in self.auto.generators:
                 self.auto.add("back", self.backup())
                 # put drivei.5 behind "back"
                 x = self.auto.afters["drop%s" % i].pop()
                 assert x[0] == ("drive%s.5" % i)
                 self.auto.afters["back"] = [x]
+                durp = True
             yield
         robot.claw_down()
         self.winch_value = 0.0
@@ -160,7 +160,7 @@ class Auto3StraightStrategy:
 
     def backup(self):
         for i in range(30):
-            self.robot.forward(-0.4)
+            self.robot.forward(-0.7)
             yield
 
 

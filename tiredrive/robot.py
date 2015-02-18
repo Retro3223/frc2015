@@ -1,6 +1,6 @@
 import wpilib
 import math
-from tiredrive.strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
@@ -123,7 +123,7 @@ class Robot(wpilib.IterativeRobot):
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
         # Select which autonomous mode: "tote", "container-overwhite", "container-nowhite", "tripletote"
-        self.auto_mode = "container-overwhite"
+        self.auto_mode = "3-tote-straight"
 
     # Autonomous Mode
     def autonomousInit(self):
@@ -172,6 +172,7 @@ class Robot(wpilib.IterativeRobot):
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
         self.raising_winch = False
+        self.maxing_winch = False
         self.compressor.start()
 
     def teleopPeriodic(self):
@@ -192,13 +193,18 @@ class Robot(wpilib.IterativeRobot):
         if self.right_joystick.getRawButton(5):
             self.raising_winch = True
         if self.right_joystick.getRawButton(4):
-            self.raising_winch = False
+            self.maxing_winch = True
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
             if self.get_winch_revs() < 328:
                 self.winch_set(1.4)
             else:
                 self.raising_winch = False
+        elif self.maxing_winch:
+            if self.get_winch_revs() < self.winch_encoder_max():
+                self.winch_set(1.4)
+            else:
+                self.maxing_winch = False
         else:
             # Feed winch controller raw values from the joystick
             # Right joystick button 3 raises winch, button 2 lowers winch
