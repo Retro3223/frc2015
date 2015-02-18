@@ -1,5 +1,5 @@
 import math
-import tiredrive.parallel_generators
+import kiwidrive.parallel_generators as pg
 
 
 class TurnStrategy:
@@ -9,7 +9,7 @@ class TurnStrategy:
         self.robot.strategies['tote'] = self
 
     def autonomousInit(self):
-        self.auto = parallel_generators.ParallelGenerators()
+        self.auto = pg.ParallelGenerators()
         self.auto.add("back_left", self.turn_back_left())
         self.auto.add("forward1", self.forward1(), after="back_left")
         self.auto.add("brake1", self.brake1(), after="forward1")
@@ -84,7 +84,7 @@ class Auto3StraightStrategy:
         self.robot.strategies['3-tote-straight'] = self
 
     def autonomousInit(self):
-        auto = ParallelGenerators()
+        auto = pg.ParallelGenerators()
         self.robot.claw_down()
         self.winch_value = 0.0
         auto.add("claw", self.robot.maintain_claw())
@@ -165,13 +165,9 @@ class Auto3StraightStrategy:
 
 
 class ContainerStrategy:
-    def __init__(self, robot, over_scoring=True):
+    def __init__(self, robot):
         self.robot = robot
-        if over_scoring:
-            self.robot.strategies['container-overwhite'] = self
-        else:
-            self.robot.strategies['container-nowhite'] = self
-        self.over_scoring = over_scoring
+        self.robot.strategies['container'] = self
 
     def autonomousInit(self):
         self.auto_state = "start"
@@ -205,18 +201,14 @@ class ContainerStrategy:
 
         # do i want to do a 180 degree turn here?
         if self.auto_state == "turn":
-            done_turning = True
+            done_turning = self.turn_brake(180)
             if done_turning:
                 self.auto_state = "drive"
 
         # state "drive": drive over the bump
         if self.auto_state == "drive":
-            if self.over_scoring:
-                count = 150
-            else:
-                count = 120
-            if self.positioned_count < count:
-                robot.forward(-.6)
+            if self.positioned_count < 190:
+                robot.forward(.6)
                 self.positioned_count += 1
                 robot.winch_motor.set(0.1 -
                                       0.01 * (robot.get_winch_revs() - 500))
@@ -249,10 +241,39 @@ class ContainerStrategy:
 
         # state "backup": back up
         if self.auto_state == "backup":
-            if self.positioned_count < 40:
-                # turn back to the right
-                self.robot.forward(-0.4)
+            if self.positioned_count < 15:
+                robot.forward(-1)
                 self.positioned_count += 1
             else:
                 self.positioned_count = 0
                 self.auto_state = "finished"
+
+    # Simplest turn algorithm
+    # Returns whether it is done turning
+    def turn_brake(self, angle):
+        if abs(self.robot.gyro.getAngle()) % 360 < angle:
+            self.robot.pivot_clockwise(1)
+        elif abs(self.robot.gyro.getRate()) > .01:
+            self.robot.brake_rotation()
+        else:
+            return True
+        return False
+
+    # Turn should have a slow down so it stops at angle perfectly
+    def turn(self, angle):
+        slow_down_angle = 30
+
+        remaining_angle = angle - abs(self.robot.gyro.getAngle()) % 360
+
+        if abs(remaining_angle) < 1 and abs(self.robot.gyro.getRate()) < .1:
+            return True
+        elif abs(remaining_angle) > slow_down_angle:
+            value = 1
+        else:
+            value = (math.sin(remaining_angle *
+                              (180/slow_down_angle) - 90) + 1) / 2
+
+        value = math.copysign(value, remaining_angle)
+
+        self.robot.pivot_clockwise(value)
+        return False

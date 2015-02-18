@@ -1,6 +1,6 @@
 import wpilib
 import math
-from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+from tiredrive.strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
