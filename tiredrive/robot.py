@@ -309,7 +309,7 @@ class Robot(wpilib.IterativeRobot):
         # Fuzzy match where if the left and right joysticks are moved
         # about the same, then it moves the tankDrive the average of
         # the two values
-        if abs(left - right) < .1:
+        if abs(left - right) < .3:
             left = right = (left + right) / 2.0
 
         return left, right
@@ -371,6 +371,7 @@ class Robot(wpilib.IterativeRobot):
         # Reset winch encoder value to 0 if right button 7 is pressed
         if self.right_joystick.getRawButton(7):
             self.winch_encoder.reset()
+            self.winch_setpoint = self.get_winch_revs()
 
         # Initializes "revs" to the winch encoder's current value
         revs = self.get_winch_revs()
