@@ -45,8 +45,8 @@ def test_joystick_axes_values(input_x, input_y, expected_x, expected_y):
     assert round(expected_y - y, 3) == 0
 
 
-wheel_magnitude_data = [(1.0, 0.0, -0.5, 1.0, 1.0),
-                        (-1.0, 0.0, 0.5, -1.0, -1.0),
+wheel_magnitude_data = [(1.0, 0.0, -1.6, 1.0, 1.0),
+                        (-1.0, 0.0, 1.6, -1.0, -1.0),
                         (0.0, 1.0, 0.0, -0.5773, 0.5773),
                         (0.0, -1.0, 0.0, 0.5773, -0.5773),
                         (0.0, 0.0, 0.0, 0.0, 0.0)]

@@ -1,6 +1,5 @@
 import wpilib
-import math
-from strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+from strategies import Auto3ToteStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
@@ -14,7 +13,8 @@ def step(value, min_val):
 
 def step_range(value, min_val, max_val, default):
     """
-    Returns "value" unless its out of range (not between "min_val" and "max_val"),
+    Returns "value" unless its out of range
+    (not between "min_val" and "max_val"),
     then it returns "default
     """
     if not (min_val <= value <= max_val):
@@ -110,12 +110,17 @@ class Robot(wpilib.IterativeRobot):
         self.dog.setSafetyEnabled(False)
 
         self.strategies = {}
-        Auto3StraightStrategy(self)
+        Auto3ToteStrategy(self)
         TurnStrategy(self)
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
-        # Select which autonomous mode: "tote", "container-overwhite", "container-nowhite", "tripletote"
-        self.auto_mode = wpilib.SmartDashboard.getString("DB/String 0", "container-overwhite")
+        # Select which autonomous mode:
+        # * "tote"
+        # * "container-overwhite"
+        # * "container-nowhite"
+        # * "3-tote"
+        self.auto_mode = wpilib.SmartDashboard.getString("DB/String 0",
+                                                         "container-overwhite")
 
     # Autonomous Mode
     def autonomousInit(self):
