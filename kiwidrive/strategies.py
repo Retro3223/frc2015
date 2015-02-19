@@ -1,5 +1,5 @@
 import math
-import kiwidrive.parallel_generators as pg
+import parallel_generators as pg
 
 
 class TurnStrategy:
@@ -78,7 +78,7 @@ class TurnStrategy:
             yield
 
 
-class Auto3StraightStrategy:
+class Auto3ToteStrategy:
     def __init__(self, robot):
         self.robot = robot
         self.robot.strategies['3-tote-straight'] = self
@@ -108,11 +108,11 @@ class Auto3StraightStrategy:
         assert robot.get_winch_revs() < 20
         tote_revs = 330
         robot.winch_setpoint = robot.winch_setpoint_zero + tote_revs
-        durped = False
+        claw_raised = False
         while robot.get_winch_revs() < robot.winch_setpoint:
-            if not durped and robot.get_winch_revs() >= 70:
+            if not claw_raised and robot.get_winch_revs() >= 70:
                 robot.claw_up()
-                durped = True
+                claw_raised = True
             self.winch_value = 1.0
             yield
         self.winch_value = 0.0
@@ -144,15 +144,23 @@ class Auto3StraightStrategy:
     def drop_tote(self, i):
         robot = self.robot
         robot.winch_setpoint = robot.winch_setpoint_zero
-        while robot.get_winch_revs() > robot.winch_setpoint_zero + 10:
-            self.winch_value = -1.0
-            if robot.get_winch_revs() < robot.winch_setpoint_zero + 290 and \
+        back_scheduled = False
+        trigger_revs = robot.winch_setpoint_zero + 290
+
+        def schedule_backup_maybe():
+            nonlocal back_scheduled
+            if not back_scheduled and \
+                    robot.get_winch_revs() < trigger_revs and \
                     ("drop%s" % i) in self.auto.generators:
-                self.auto.add("back", self.backup())
-                # put drivei.5 behind "back"
+                self.auto.add("backup", self.backup())
+                # schedule drivei.5 behind "backup"
                 x = self.auto.afters["drop%s" % i].pop()
                 assert x[0] == ("drive%s.5" % i)
-                self.auto.afters["back"] = [x]
+                self.auto.afters["backup"] = [x]
+                back_scheduled = True
+        while robot.get_winch_revs() > robot.winch_setpoint_zero + 10:
+            self.winch_value = -1.0
+            schedule_backup_maybe()
             yield
         robot.claw_down()
         self.winch_value = 0.0

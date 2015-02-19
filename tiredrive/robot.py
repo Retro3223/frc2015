@@ -1,6 +1,5 @@
 import wpilib
-import math
-from tiredrive.strategies import Auto3StraightStrategy, TurnStrategy, ContainerStrategy
+from strategies import Auto3ToteStrategy, TurnStrategy, ContainerStrategy
 
 
 def step(value, min_val):
@@ -14,7 +13,8 @@ def step(value, min_val):
 
 def step_range(value, min_val, max_val, default):
     """
-    Returns "value" unless its out of range (not between "min_val" and "max_val"),
+    Returns "value" unless its out of range
+    (not between "min_val" and "max_val"),
     then it returns "default
     """
     if not (min_val <= value <= max_val):
@@ -99,17 +99,9 @@ class Robot(wpilib.IterativeRobot):
         self.claw_state = True
         self.claw_toggle = False
 
-        # Initialize the ultrasonic sensors
-        self.left_ultrasonic_sensor = wpilib.AnalogInput(1)
-        self.right_ultrasonic_sensor = wpilib.AnalogInput(2)
-
-        # Initialize the optical sensors
-        self.left_optical_sensor = wpilib.DigitalInput(3)
-        self.right_optical_sensor = wpilib.DigitalInput(4)
-
         # Initialize the limit switches
         self.left_limit_switch = wpilib.DigitalInput(6)
-        self.right_limit_switch = self.left_limit_switch
+        self.right_limit_switch = wpilib.DigitalInput(4)
         # wpilib.DigitalInput(6)
 
         # Initialize the compressor watchdog
@@ -118,12 +110,17 @@ class Robot(wpilib.IterativeRobot):
         self.dog.setSafetyEnabled(False)
 
         self.strategies = {}
-        Auto3StraightStrategy(self)
+        Auto3ToteStrategy(self)
         TurnStrategy(self)
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
-        # Select which autonomous mode: "tote", "container-overwhite", "container-nowhite", "tripletote"
-        self.auto_mode = "container-overwhite"
+        # Select which autonomous mode:
+        # * "tote"
+        # * "container-overwhite"
+        # * "container-nowhite"
+        # * "3-tote"
+        self.auto_mode = wpilib.SmartDashboard.getString("DB/String 0",
+                                                         "container-overwhite")
 
     # Autonomous Mode
     def autonomousInit(self):
@@ -172,6 +169,7 @@ class Robot(wpilib.IterativeRobot):
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
         self.raising_winch = False
+        self.maxing_winch = False
         self.compressor.start()
 
     def teleopPeriodic(self):
@@ -192,13 +190,18 @@ class Robot(wpilib.IterativeRobot):
         if self.right_joystick.getRawButton(5):
             self.raising_winch = True
         if self.right_joystick.getRawButton(4):
-            self.raising_winch = False
+            self.maxing_winch = True
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
             if self.get_winch_revs() < 328:
                 self.winch_set(1.4)
             else:
                 self.raising_winch = False
+        elif self.maxing_winch:
+            if self.get_winch_revs() < self.winch_encoder_max():
+                self.winch_set(1.4)
+            else:
+                self.maxing_winch = False
         else:
             # Feed winch controller raw values from the joystick
             # Right joystick button 3 raises winch, button 2 lowers winch
@@ -263,13 +266,6 @@ class Robot(wpilib.IterativeRobot):
             print("left limit switch: ", self.left_claw_whisker())
             print("right limit switch: ", self.right_claw_whisker())
 
-        # Prints ultrasonic sensor values when left button 10 is pressed
-        if self.left_joystick.getRawButton(10):
-            print("left_ultrasonic_sensor: ",
-                  self.left_ultrasonic_sensor.getValue())
-            print("right_ultrasonic_sensor: ",
-                  self.right_ultrasonic_sensor.getValue())
-
         # Prints optical sensor values when left button 11 is pressed
         if self.left_joystick.getRawButton(11):
             print("left encoder: ", self.left_encoder.get())
@@ -318,7 +314,7 @@ class Robot(wpilib.IterativeRobot):
         # Fuzzy match where if the left and right joysticks are moved
         # about the same, then it moves the tankDrive the average of
         # the two values
-        if abs(left - right) < .1:
+        if abs(left - right) < .3:
             left = right = (left + right) / 2.0
 
         return left, right
@@ -361,10 +357,10 @@ class Robot(wpilib.IterativeRobot):
         self.claw_state = True
 
     def left_claw_whisker(self):
-        return self.left_limit_switch.get()
+        return not self.left_limit_switch.get()
 
     def right_claw_whisker(self):
-        return self.right_limit_switch.get()
+        return not self.right_limit_switch.get()
 
     def winch_set(self, signal):
         """
@@ -380,6 +376,7 @@ class Robot(wpilib.IterativeRobot):
         # Reset winch encoder value to 0 if right button 7 is pressed
         if self.right_joystick.getRawButton(7):
             self.winch_encoder.reset()
+            self.winch_setpoint = self.get_winch_revs()
 
         # Initializes "revs" to the winch encoder's current value
         revs = self.get_winch_revs()

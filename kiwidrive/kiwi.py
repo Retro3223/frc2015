@@ -1,14 +1,14 @@
 import math
 import wpilib
-import kiwidrive.xbox as joy
-import kiwidrive.strategies as strats
+import xbox as joy
+import strategies as strats
 
 try:
     import numpy as np
     M = np.array(
         [[-1.6,  0.0],
-         [ 1.0, -1.0 / math.sqrt(3)],
-         [ 1.0,  1.0 / math.sqrt(3)]])
+         [+1.0, -1.0 / math.sqrt(3)],
+         [+1.0,  1.0 / math.sqrt(3)]])
 except ImportError:
     print("no numpy; hope you aren't trying to use kiwidrive")
 

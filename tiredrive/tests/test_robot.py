@@ -115,8 +115,7 @@ def test_3_totes():
     robot.winch_encoder.get = Mock(return_value=-8)
     robot.forward = Mock()
     robot.winch_set = Mock()
-    robot.right_ultrasonic_sensor.getValue = Mock(return_value=300)
-    robot.auto_mode = "3-tote-straight"
+    robot.auto_mode = "3-tote"
     robot.autonomousInit()
 
     auto = robot.strategies[robot.auto_mode].auto
@@ -150,14 +149,15 @@ def test_3_totes():
 
     robot.autonomousPeriodic()
     robot.winch_set.assert_called_with(0)
-    assert_called_with_fuzzy(robot.forward, 0.5)
+    assert_called_with_fuzzy(robot.forward, 0.7)
     assert "drive1" in auto.generators
 
     robot.autonomousPeriodic()
     assert "drive1" in auto.generators
-    robot.forward.assert_called_with(0.5)
+    robot.forward.assert_called_with(0.7)
     robot.right_encoder.get = Mock(return_value=307)
     robot.autonomousPeriodic()
+    assert "drop1" not in auto.generators
     robot.autonomousPeriodic()
     assert "drive1" not in auto.generators
     assert "drop1" in auto.generators
@@ -166,21 +166,25 @@ def test_3_totes():
     robot.autonomousPeriodic()
     robot.winch_encoder.get.return_value = -13
     robot.autonomousPeriodic()
-    assert "back" in auto.generators
+    assert "drop1" in auto.generators
+    assert "backup" in auto.generators
+    robot.right_claw_whisker = Mock(return_value=False)
+    robot.left_claw_whisker = Mock(return_value=False)
+    robot.autonomousPeriodic()
     assert "drive1.5" not in auto.generators
-    robot.autonomousPeriodic()
-    robot.right_encoder.get.return_value = 0
-    robot.autonomousPeriodic()
     assert "drop1" not in auto.generators
-    for i in range(20):
+    for i in range(35):
         robot.autonomousPeriodic()
-    assert "drive1.5" not in auto.generators
-    for i in range(10):
-        robot.autonomousPeriodic()
+        if "backup" not in auto.generators:
+            break
+    assert "backup" not in auto.generators
     assert "drive1.5" in auto.generators
-    assert "pickup2" not in auto.generators
-    robot.winch_encoder.get.return_value = -10
-    robot.right_encoder.get.return_value = 61
+    robot.autonomousPeriodic()
+    assert "drive1.5" in auto.generators
+    robot.right_claw_whisker.return_value = True
+    robot.autonomousPeriodic()
+    assert "drive1.5" in auto.generators
+    robot.left_claw_whisker.return_value = True
     robot.autonomousPeriodic()
     assert "drive1.5" not in auto.generators
     assert "pickup2" in auto.generators
