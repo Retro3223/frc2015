@@ -119,11 +119,15 @@ class Robot(wpilib.IterativeRobot):
         # * "container-overwhite"
         # * "container-nowhite"
         # * "3-tote"
-        self.auto_mode = wpilib.SmartDashboard.getString("DB/String 0",
-                                                         "container-overwhite")
+        self.chooser = wpilib.SendableChooser()
+        for auto_mode in self.strategies.keys():
+            self.chooser.addObject(auto_mode, auto_mode)
+        wpilib.SmartDashboard.putData("Choice", self.chooser)
+        self.auto_mode = None
 
     # Autonomous Mode
     def autonomousInit(self):
+        self.auto_mode = self.chooser.getSelected()
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()

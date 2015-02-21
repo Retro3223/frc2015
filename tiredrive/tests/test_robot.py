@@ -115,7 +115,7 @@ def test_3_totes():
     robot.winch_encoder.get = Mock(return_value=-8)
     robot.forward = Mock()
     robot.winch_set = Mock()
-    robot.auto_mode = "3-tote"
+    robot.chooser.getSelected = Mock(return_value="3-tote")
     robot.autonomousInit()
 
     auto = robot.strategies[robot.auto_mode].auto
