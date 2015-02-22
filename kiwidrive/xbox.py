@@ -44,6 +44,18 @@ class XboxController:
     def digital_test(self):
         return self.joystick.getRawButton(XboxController.BUTTON_BACK)
 
+    def show_limit_switches(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_A)
+
+    def show_winch_encoder(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_B)
+
+    def show_gyro(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_X)
+
+    def show_arm(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_Y)
+
     def digital_winch_encoder_reset(self):
         return self.joystick.getRawButton(XboxController.BUTTON_START)
 
