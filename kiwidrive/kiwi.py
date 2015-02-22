@@ -92,7 +92,7 @@ class KiwiDrive:
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(4)
-        self.arm_power = Smooth(0.0, 0.01)
+        self.arm_power = Smooth(0.0, 0.05)
 
         # Initialize the winch motor
         self.winch_motor = wpilib.Talon(3)
@@ -142,19 +142,15 @@ class KiwiDrive:
 
         # Initialize autonomous strategies
         self.strategies = {}
-        strats.Auto3StraightStrategy(self)
-        strats.TurnStrategy(self)
-        strats.ContainerStrategy(self)
+        strats.Auto3ToteStrategy(self)
+        strats.ContainerStrategy(self, True)
+        strats.ContainerStrategy(self, False)
 
     def autonomousInit(self, auto_mode):
         """
         Runs an autonomous mode method based on the selected mode
         """
-        assert auto_mode in [
-            "container",
-            "tote",
-            "3-tote-straight",
-        ]
+        assert auto_mode in self.strategies.keys()
         self.auto_mode = auto_mode
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
         self.strategies[self.auto_mode].autonomousInit()
@@ -333,6 +329,7 @@ class KiwiDrive:
         # Reset winch encoder value to 0 if right button 7 is pressed
         if self.joy.digital_winch_encoder_reset():
             self.winch_encoder.reset()
+            self.winch_setpoint = self.get_winch_revs()
 
         # Initializes "revs" to the winch encoder's current value
         revs = self.get_winch_revs()

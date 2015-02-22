@@ -17,6 +17,10 @@ class Robot(wpilib.IterativeRobot):
         # Select which autonomous mode: "tote", "container", "tripletote"
         self.auto_mode = "3-tote-straight"
 
+    @property
+    def strategies(self):
+        return self.kiwidrive.strategies
+
     def autonomousInit(self):
         self.kiwidrive.autonomousInit(self.auto_mode)
 
@@ -34,6 +38,15 @@ class Robot(wpilib.IterativeRobot):
 
     def testPeriodic(self):
         pass
+
+    def winch_encoder_min(self):
+        return self.kiwidrive.winch_encoder_min()
+
+    def winch_encoder_max(self):
+        return self.kiwidrive.winch_encoder_max()
+
+    def winch_set(self, signal):
+        return self.kiwidrive.winch_set(signal)
 
 
 if __name__ == "__main__":
