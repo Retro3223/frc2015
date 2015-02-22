@@ -239,11 +239,19 @@ class KiwiDrive:
         # Test Mode
         # calculates and prints values to be used in testing
         """
-        print('legalize crystal fucking weed')
+        if self.joy.show_limit_switches():
+            print("left limit switch: ", self.left_claw_whisker())
+            print("right limit switch: ", self.right_claw_whisker())
 
-        print('winch revolutions: ', self.get_winch_revs())
+        if self.joy.show_winch_encoder():
+            print('winch revolutions: ', self.get_winch_revs())
 
-        print('angle: ', self.gyro.getAngle())
+        if self.joy.show_gyro():
+            angle = self.gyro.getAngle()
+            print('angle: ', angle)
+
+        if self.joy.show_arm():
+            print('arm power: ', self.arm_power.value)
 
     def RawDrive(self, x, y, rot):
         xy = normalize_joystick_axes(x, y)
