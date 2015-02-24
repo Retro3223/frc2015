@@ -8,8 +8,8 @@ def test_container_state_transitions():
     robot.winch_encoder = Mock(robot.winch_encoder)
     robot.winch_encoder.get = Mock(return_value=-8)
     robot.winch_set = Mock()
+    robot.chooser.getSelected = Mock(return_value="container-overwhite")
     robot.forward = Mock()
-    robot.auto_mode = "container-overwhite"
     robot.autonomousInit()
 
     strategy = robot.strategies[robot.auto_mode]
