@@ -1,4 +1,3 @@
-import math
 import parallel_generators as pg
 
 
@@ -173,9 +172,13 @@ class Auto3ToteStrategy:
 
 
 class ContainerStrategy:
-    def __init__(self, robot):
+    def __init__(self, robot, over_scoring=True):
         self.robot = robot
-        self.robot.strategies['container'] = self
+        if over_scoring:
+            self.robot.strategies['container-overwhite'] = self
+        else:
+            self.robot.strategies['container-nowhite'] = self
+        self.over_scoring = over_scoring
 
     def autonomousInit(self):
         self.auto_state = "start"
@@ -209,17 +212,21 @@ class ContainerStrategy:
 
         # do i want to do a 180 degree turn here?
         if self.auto_state == "turn":
-            done_turning = self.turn_brake(180)
+            done_turning = True
             if done_turning:
                 self.auto_state = "drive"
 
         # state "drive": drive over the bump
         if self.auto_state == "drive":
-            if self.positioned_count < 190:
-                robot.forward(.6)
+            robot.winch_setpoint = 500
+            if self.over_scoring:
+                count = 150
+            else:
+                count = 120
+            if self.positioned_count < count:
+                robot.forward(-.6)
                 self.positioned_count += 1
-                robot.winch_motor.set(0.1 -
-                                      0.01 * (robot.get_winch_revs() - 500))
+                robot.winch_set(0)
             else:
                 self.positioned_count = 0
                 self.auto_state = "setdown"
@@ -249,39 +256,9 @@ class ContainerStrategy:
 
         # state "backup": back up
         if self.auto_state == "backup":
-            if self.positioned_count < 15:
-                robot.forward(-1)
+            if self.positioned_count < 40:
+                self.robot.forward(-0.4)
                 self.positioned_count += 1
             else:
                 self.positioned_count = 0
                 self.auto_state = "finished"
-
-    # Simplest turn algorithm
-    # Returns whether it is done turning
-    def turn_brake(self, angle):
-        if abs(self.robot.gyro.getAngle()) % 360 < angle:
-            self.robot.pivot_clockwise(1)
-        elif abs(self.robot.gyro.getRate()) > .01:
-            self.robot.brake_rotation()
-        else:
-            return True
-        return False
-
-    # Turn should have a slow down so it stops at angle perfectly
-    def turn(self, angle):
-        slow_down_angle = 30
-
-        remaining_angle = angle - abs(self.robot.gyro.getAngle()) % 360
-
-        if abs(remaining_angle) < 1 and abs(self.robot.gyro.getRate()) < .1:
-            return True
-        elif abs(remaining_angle) > slow_down_angle:
-            value = 1
-        else:
-            value = (math.sin(remaining_angle *
-                              (180/slow_down_angle) - 90) + 1) / 2
-
-        value = math.copysign(value, remaining_angle)
-
-        self.robot.pivot_clockwise(value)
-        return False

@@ -34,8 +34,8 @@ class XboxController:
                self.joystick.getRawButton(XboxController.BUTTON_BUMP_LEFT)
 
     def analog_winch(self):
-        return self.joystick.getRawJoy(XboxController.JOY_TRIG_R) -\
-               self.joystick.getRawJoy(XboxController.JOY_TRIG_L)
+        return self.joystick.getRawAxis(XboxController.JOY_TRIG_R) -\
+               self.joystick.getRawAxis(XboxController.JOY_TRIG_L)
 
     def analog_arm(self):
         return self.joystick.getRawButton(XboxController.BUTTON_Y) -\
@@ -44,11 +44,23 @@ class XboxController:
     def digital_test(self):
         return self.joystick.getRawButton(XboxController.BUTTON_BACK)
 
+    def show_limit_switches(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_A)
+
+    def show_winch_encoder(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_B)
+
+    def show_gyro(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_X)
+
+    def show_arm(self):
+        return self.joystick.getRawButton(XboxController.BUTTON_Y)
+
     def digital_winch_encoder_reset(self):
-        return self.joystick.GetRawButton(XboxController.BUTTON_START)
+        return self.joystick.getRawButton(XboxController.BUTTON_START)
 
     def digital_winch_override(self):
-        return self.joystick.GetRawButton(XboxController.BUTTON_X)
+        return self.joystick.getRawButton(XboxController.BUTTON_X)
 
     def A(self):
         return self.joystick.getRawButton(1)

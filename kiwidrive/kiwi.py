@@ -13,15 +13,17 @@ except ImportError:
     print("no numpy; hope you aren't trying to use kiwidrive")
 
 
-def get_wheel_magnitudes(v, m=None):
+def get_wheel_magnitudes(v, rot_offset, m=None):
     """
     Calculate the magnitudes to drive wheels 1, 2, and 3
     to drive the robot in the direction defined by normalized
     vector v=[x,y]
     """
+    rot = math.atan2(v[1], v[0]) + rot_offset
     if m is None:
         m = M
-    return np.dot(m, v)
+    v2 = (math.cos(rot), math.sin(rot))
+    return math.hypot(*v) * np.dot(m, v2)
 
 
 def normalize_joystick_axes(x, y):
@@ -92,7 +94,7 @@ class KiwiDrive:
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(4)
-        self.arm_power = Smooth(0.0, 0.01)
+        self.arm_power = Smooth(0.0, 0.05)
 
         # Initialize the winch motor
         self.winch_motor = wpilib.Talon(3)
@@ -142,19 +144,15 @@ class KiwiDrive:
 
         # Initialize autonomous strategies
         self.strategies = {}
-        strats.Auto3StraightStrategy(self)
-        strats.TurnStrategy(self)
-        strats.ContainerStrategy(self)
+        strats.Auto3ToteStrategy(self)
+        strats.ContainerStrategy(self, True)
+        strats.ContainerStrategy(self, False)
 
     def autonomousInit(self, auto_mode):
         """
         Runs an autonomous mode method based on the selected mode
         """
-        assert auto_mode in [
-            "container",
-            "tote",
-            "3-tote-straight",
-        ]
+        assert auto_mode in self.strategies.keys()
         self.auto_mode = auto_mode
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
         self.strategies[self.auto_mode].autonomousInit()
@@ -188,10 +186,10 @@ class KiwiDrive:
         return self._winch_encoder_min + 1162
 
     def forward(self, val):
-        self.RawDrive(0, val, 0)
+        self.RawDrive(0, val, 0, 0)
 
     def pivot_clockwise(self, val):
-        self.RawDrive(0, 0, val)
+        self.RawDrive(0, 0, 0, val)
 
     def Enable(self):
         self.pidcontroller.setSetpoint(self.getAngle())
@@ -212,7 +210,17 @@ class KiwiDrive:
         y = self.joy.analog_drive_y()
         # rot is +1.0 for right trigger, -1.0 for left
         rot = self.joy.analog_rot()
-        self.RawDrive(x, y, rot)
+        heading_offset = self.joy.d_pad()
+        if heading_offset == -1:
+            heading_offset = 0
+        else:
+            heading_offset -= self.getAngle()
+            if abs(x) < 0.2 and abs(y) < 0.2:
+                # set magnitude to 0.5;
+                # heading_offset will change the direction
+                x = 0.5
+                y = 0
+        self.RawDrive(x, y, heading_offset, rot)
 
         # Feed winch controller raw values from the joystick
         winch_signal = self.joy.analog_winch()
@@ -243,15 +251,29 @@ class KiwiDrive:
         # Test Mode
         # calculates and prints values to be used in testing
         """
-        print('legalize crystal fucking weed')
+        if self.joy.show_limit_switches():
+            print("left limit switch: ", self.left_claw_whisker())
+            print("right limit switch: ", self.right_claw_whisker())
 
-        print('winch revolutions: ', self.get_winch_revs())
+        if self.joy.show_winch_encoder():
+            print('winch revolutions: ', self.get_winch_revs())
 
-        print('angle: ', self.gyro.getAngle())
+        if self.joy.show_gyro():
+            angle = self.gyro.getAngle()
+            print('angle: ', angle)
 
-    def RawDrive(self, x, y, rot):
+        if self.joy.show_arm():
+            print('arm power: ', self.arm_power.value)
+
+    def RawDrive(self, x, y, heading_offset, rot):
+        """
+        heading_offset - offset in degrees to the direction we are driving
+            the robot
+        rot - offset in signal [-1, 1] to all motors (kind of a low-level
+            rotational offset)
+        """
         xy = normalize_joystick_axes(x, y)
-        motor_values = get_wheel_magnitudes(xy, self.m)
+        motor_values = get_wheel_magnitudes(xy, heading_offset, self.m)
 
         # Deals with rotation and calming down the gyro
         if rot != 0:
@@ -290,7 +312,7 @@ class KiwiDrive:
         by powering the motors in the direction opposite the rotation
         """
         gyro_rate = self.gyro.getRate()
-        return self.RawDrive(0, 0, -gyro_rate * .1)
+        return self.RawDrive(0, 0, 0, -gyro_rate * .1)
 
     def brake_linear(self):
         """
@@ -298,7 +320,7 @@ class KiwiDrive:
         by powering the motors in the direction opposite the movement
         """
         accel_y = self.accel.getY()
-        return self.RawDrive(0, -accel_y * .1, 0)
+        return self.RawDrive(0, -accel_y * .1, 0, 0)
 
     def set_claw(self):
         """
@@ -333,6 +355,7 @@ class KiwiDrive:
         # Reset winch encoder value to 0 if right button 7 is pressed
         if self.joy.digital_winch_encoder_reset():
             self.winch_encoder.reset()
+            self.winch_setpoint = self.get_winch_revs()
 
         # Initializes "revs" to the winch encoder's current value
         revs = self.get_winch_revs()
