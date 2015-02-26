@@ -85,23 +85,32 @@ class TurnStrategy:
         self.robot.strategies['turn'] = self
 
     def autonomousInit(self):
+        self.braking = False
         self.auto = ParallelGenerators()
         self.auto.add("turn", self.turn(90))
-        self.auto.add("brake", self.brake(), after="turn")
-        self.auto.add("wait", self.wait(), after="brake")
+        self.auto.add("wait", self.wait(), after="turn")
+        self.auto.add("brake", self.brake())
 
     def autonomousPeriodic(self):
         self.auto.next()
 
     def turn(self, angle):
-        while abs(self.robot.gyro.getAngle()) % 360 < angle:
+        angle0 = self.robot.gyro.getAngle()
+        while abs(self.robot.gyro.getAngle() - angle0) % 360 < (angle-30):
             self.robot.pivot_clockwise(1)
             yield
+        for i in range(20):
+            self.braking = True
+            yield
+        self.braking = False
+        yield
 
     def brake(self):
-        while abs(self.robot.gyro.getRate()) > .01:
-            left_wheel, right_wheel = self.robot.brake_rotation()
-            self.robot.robotdrive.tankDrive(left_wheel, right_wheel)
+        while True:
+            if self.braking:
+                self.robot.brake_on()
+            else:
+                self.robot.brake_off()
             yield
 
     def wait(self):

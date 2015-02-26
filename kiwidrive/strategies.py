@@ -235,7 +235,7 @@ class ContainerStrategy:
         if self.auto_state == "setdown":
             if robot.get_winch_revs() > 15:
                 robot.winch_motor.set(-.5)
-                robot.brake_linear()
+                robot.kiwidrive.brake_linear()
             else:
                 robot.winch_motor.set(0)
                 self.auto_state = "clawin"

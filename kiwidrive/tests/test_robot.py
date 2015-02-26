@@ -6,7 +6,7 @@ from mock import Mock
 def test_arm():
     robot = Robot()
     robot.robotInit()
-    arm_motor = robot.kiwidrive.arm_motor
+    arm_motor = robot.arm_motor
     arm_motor.set = Mock()
     joy = robot.kiwidrive.joy
     joy.analog_arm = Mock(return_value=0)
@@ -52,9 +52,9 @@ def test_winch():
 def setup_winch_set_robot():
     robot = Robot()
     robot.robotInit()
-    winch_encoder = robot.kiwidrive.winch_encoder
+    winch_encoder = robot.winch_encoder
     winch_encoder.get = Mock(return_value=-500)
-    winch_motor = robot.kiwidrive.winch_motor
+    winch_motor = robot.winch_motor
     winch_motor.set = Mock()
     robot.teleopInit()
     return robot
@@ -65,8 +65,8 @@ def test_winch_set_safety_down():
     winch_set should not drive winch below the minimum encoder value
     """
     robot = setup_winch_set_robot()
-    winch_encoder = robot.kiwidrive.winch_encoder
-    winch_motor = robot.kiwidrive.winch_motor
+    winch_encoder = robot.winch_encoder
+    winch_motor = robot.winch_motor
     assert robot.winch_encoder_min() == 8
     assert robot.winch_encoder_max() == 1170
 
@@ -93,8 +93,8 @@ def test_winch_set_safety_up():
     winch_set should not drive winch above the maximum encoder value
     """
     robot = setup_winch_set_robot()
-    winch_encoder = robot.kiwidrive.winch_encoder
-    winch_motor = robot.kiwidrive.winch_motor
+    winch_encoder = robot.winch_encoder
+    winch_motor = robot.winch_motor
     assert robot.winch_encoder_min() == 8
     assert robot.winch_encoder_max() == 1170
 
@@ -114,3 +114,17 @@ def test_winch_set_safety_up():
     winch_encoder.get = Mock(return_value=-(max+1))
     robot.winch_set(1.0)
     assert_called_with_fuzzy(winch_motor.set, 0.0)
+
+
+def test_teleop():
+    """
+    run teleop and see if anything dies!
+    """
+    robot = Robot()
+    robot.robotInit()
+    robot.disabledInit()
+    for i in range(20):
+        robot.disabledPeriodic()
+    robot.teleopInit()
+    for i in range(20):
+        robot.teleopPeriodic()

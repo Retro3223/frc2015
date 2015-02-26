@@ -96,6 +96,9 @@ class Robot(wpilib.IterativeRobot):
         self.solenoid1 = wpilib.Solenoid(1)
         self.solenoid2 = wpilib.Solenoid(2)
 
+        self.brake_solenoid1 = wpilib.Solenoid(4)
+        self.brake_solenoid2 = wpilib.Solenoid(5)
+
         self.claw_state = True
         self.claw_toggle = False
 
@@ -128,6 +131,7 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.auto_mode = self.chooser.getSelected()
+        self.auto_mode = "turn"
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
@@ -176,16 +180,22 @@ class Robot(wpilib.IterativeRobot):
         self.maxing_winch = False
         self.compressor.start()
 
+    def brake_on(self):
+        self.brake_solenoid1.set(True)
+        self.brake_solenoid2.set(False)
+
+    def brake_off(self):
+        self.brake_solenoid1.set(False)
+        self.brake_solenoid2.set(True)
+
     def teleopPeriodic(self):
         # If left trigger pulled, run brake algorithm,
         # otherwise use joystick values to drive
-        if self.left_joystick.getRawButton(1):
-            rotation_values = self.brake_rotation()
-            linear_values = self.brake_linear()
-            left_wheel = rotation_values[0] + linear_values[0]
-            right_wheel = rotation_values[1] + linear_values[1]
+        if self.left_joystick.getRawButton(5):
+            self.brake_on()
         else:
-            left_wheel, right_wheel = self.drive_values()
+            self.brake_off()
+        left_wheel, right_wheel = self.drive_values()
 
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)

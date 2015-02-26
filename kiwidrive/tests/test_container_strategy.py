@@ -5,7 +5,7 @@ from kiwidrive.robot import Robot
 def test_container_state_transitions():
     robot = Robot()
     robot.robotInit()
-    winch_encoder = robot.kiwidrive.winch_encoder
+    winch_encoder = robot.winch_encoder
     winch_encoder.get = Mock(return_value=-8)
     robot.winch_set = Mock()
     robot.forward = Mock()
@@ -18,7 +18,7 @@ def test_container_state_transitions():
     robot.autonomousPeriodic()
     assert strategy.auto_state == "lift"
 
-    robot.kiwidrive.get_winch_revs = Mock(return_value=500)
+    robot.get_winch_revs = Mock(return_value=500)
     robot.autonomousPeriodic()
     assert strategy.auto_state == "drive"
     robot.autonomousPeriodic()
@@ -32,7 +32,7 @@ def test_container_state_transitions():
     robot.autonomousPeriodic()
     assert strategy.auto_state == "setdown"
 
-    robot.kiwidrive.get_winch_revs = Mock(return_value=15)
+    robot.get_winch_revs = Mock(return_value=15)
     robot.autonomousPeriodic()
     assert strategy.auto_state == "wait"
 
