@@ -131,7 +131,7 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.auto_mode = self.chooser.getSelected()
-        self.auto_mode = "turn"
+        self.auto_mode = "container-overwhite"
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
@@ -191,10 +191,10 @@ class Robot(wpilib.IterativeRobot):
     def teleopPeriodic(self):
         # If left trigger pulled, run brake algorithm,
         # otherwise use joystick values to drive
-        if self.left_joystick.getRawButton(5):
-            self.brake_on()
-        else:
+        if self.left_joystick.getRawButton(1):
             self.brake_off()
+        else:
+            self.brake_on()
         left_wheel, right_wheel = self.drive_values()
 
         # Feed joystick values into drive system
@@ -207,6 +207,7 @@ class Robot(wpilib.IterativeRobot):
             self.maxing_winch = True
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
+            print ('raising winch: ', self.get_winch_revs())
             if self.get_winch_revs() < 328:
                 self.winch_set(1.4)
             else:
@@ -230,16 +231,15 @@ class Robot(wpilib.IterativeRobot):
         arm_signal = self.left_joystick.getRawButton(3) + \
             -self.left_joystick.getRawButton(2)
         val = self.arm_power.set(arm_signal)
-        self.arm_motor.set(val)
+        self.arm_motor.set(0.5 * val)
 
         # Handle piston in and out
         # Right joystick trigger button toggles claw in or out
         if self.right_joystick.getRawButton(1):
-            self.claw_toggle = True
-        elif self.claw_toggle:
-            self.claw_toggle = False
-            self.claw_state = not self.claw_state
-            self.set_claw()
+            self.claw_up()
+        else:
+            self.claw_down()
+        self.set_claw()
 
         # If the right joystick slider is down, also run test mode
         if self.right_joystick.getRawAxis(2) > .5:
