@@ -1,7 +1,7 @@
 from parallel_generators import ParallelGenerators
 
-class TurnStrategy:
 
+class TurnStrategy:
     def __init__(self, robot):
         self.robot = robot
         self.robot.strategies['turn'] = self

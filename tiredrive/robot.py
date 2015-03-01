@@ -1,5 +1,5 @@
 import wpilib
-from strategies import Auto3ToteStrategy, TurnStrategy, ContainerStrategy
+from strategies import ContainerStrategy
 
 
 def step(value, min_val):
@@ -71,7 +71,7 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
-        self.arm_power = Smooth(0.0, 0.1)
+        self.arm_power = 0  # Smooth(0.0, 0.1)
 
         # Initialize the accelerometer
         self.accel = wpilib.BuiltInAccelerometer()
@@ -131,7 +131,6 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.auto_mode = self.chooser.getSelected()
-        self.auto_mode = "container-overwhite-nodrop"
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
@@ -192,14 +191,25 @@ class Robot(wpilib.IterativeRobot):
         # If left trigger pulled, run brake algorithm,
         # otherwise use joystick values to drive
         if self.left_joystick.getRawButton(1):
-            self.brake_on()
-        else:
             self.brake_off()
+        else:
+            self.brake_on()
         left_wheel, right_wheel = self.drive_values()
 
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)
 
+        self.do_winch()
+        self.trevor_arm()
+
+        self.claw_notoggle(default_up=True)
+        # self.claw_toggle()
+
+        # If the right joystick slider is down, also run test mode
+        if self.right_joystick.getRawAxis(2) > .5:
+            self.test_mode()
+
+    def do_winch(self):
         # Raise winch subroutine
         if self.right_joystick.getRawButton(5):
             self.raising_winch = True
@@ -207,44 +217,64 @@ class Robot(wpilib.IterativeRobot):
             self.minning_winch = True
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
-            print ('raising winch: ', self.get_winch_revs())
             if self.get_winch_revs() < 328:
                 self.winch_set(1.4)
             else:
                 self.raising_winch = False
         elif self.minning_winch:
             if self.get_winch_revs() > self.winch_encoder_min():
-                self.winch_set(1.4)
+                self.winch_set(-1.4)
             else:
                 self.minning_winch = False
         else:
             # Feed winch controller raw values from the joystick
             # Right joystick button 3 raises winch, button 2 lowers winch
-            winch_signal = self.right_joystick.getRawButton(3) + \
+            winch_signal = 1.8 * self.right_joystick.getRawButton(3) + \
                 -self.right_joystick.getRawButton(2)
             # Right joystick button 6 overrides encoder,
             # button 7 resets encoder
             self.winch_set(winch_signal)
 
-        # Feed arm controller raw values from the joystick
-        # Left joystick button 3 goes forward, 2 goes backward
+    def trevor_arm(self):
+        """
+        Feed arm controller raw values from the joystick
+        Left joystick button 3 goes forward, 2 goes backward
+        """
         arm_signal = self.left_joystick.getRawButton(3) + \
             -self.left_joystick.getRawButton(2)
-        val = self.arm_power.set(0.6 * arm_signal)
+        val = 0.9 * arm_signal  # self.arm_power.set(0.9 * arm_signal)
         self.arm_motor.set(0.5 * val)
 
-        # Handle piston in and out
-        # Right joystick trigger button toggles claw in or out
+    def claw_notoggle(self, default_up=True):
+        """
+        Handle piston in and out
+        Claw is in default state unless Right joystick trigger button pressed
+        """
+        if default_up:
+            pressed_action = self.claw_up
+            default_action = self.claw_down
+        else:
+            pressed_action = self.claw_down
+            default_action = self.claw_up
+
+        if self.right_joystick.getRawButton(1):
+            pressed_action()
+        else:
+            default_action()
+        self.set_claw()
+
+    def claw_toggle(self):
+        """
+        Handle piston in and out
+        Right joystick trigger button toggles claw in or out
+        toggle
+        """
         if self.right_joystick.getRawButton(1):
             self.claw_toggle = True
         elif self.claw_toggle:
             self.claw_toggle = False
             self.claw_state = not self.claw_state
             self.set_claw()
-
-        # If the right joystick slider is down, also run test mode
-        if self.right_joystick.getRawAxis(2) > .5:
-            self.test_mode()
 
     # Robotpy's broken test mode
     def testPeriodic(self):
@@ -303,7 +333,7 @@ class Robot(wpilib.IterativeRobot):
 
         if self.left_joystick.getRawButton(2) or \
                 self.left_joystick.getRawButton(3):
-            print('arm power: ', self.arm_power.value)
+            print('arm power: ', self.arm_power)  # .value)
 
     # Disabled Mode
     def disabledPeriodic(self):

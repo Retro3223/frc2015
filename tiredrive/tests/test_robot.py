@@ -1,6 +1,7 @@
 from mock import Mock
 from .utils import assert_called_with_fuzzy
 from tiredrive.robot import Robot
+from tiredrive.strategies import Auto3ToteStrategy
 
 
 def setup_winch_set_robot():
@@ -111,6 +112,8 @@ def test_3_totes():
     """
     robot = Robot()
     robot.robotInit()
+    Auto3ToteStrategy(robot)
+
     robot.winch_encoder = Mock(robot.winch_encoder)
     robot.winch_encoder.get = Mock(return_value=-8)
     robot.forward = Mock()
