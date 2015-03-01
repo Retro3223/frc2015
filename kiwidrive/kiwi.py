@@ -190,7 +190,6 @@ class KiwiDrive:
             motor.set(val)
 
     def pidWrite(self, output):
-        print("pid output: ", output)
         self.pid_correction = output
 
     def brake_rotation(self):

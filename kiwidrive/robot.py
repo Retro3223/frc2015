@@ -91,7 +91,7 @@ class Robot(wpilib.IterativeRobot):
         elif psv == 0:
             self.compressor.set(1)
         else:
-            print ("badurk?")
+            print("badurk?")
 
     def testPeriodic(self):
         pass

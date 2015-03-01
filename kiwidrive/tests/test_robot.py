@@ -67,23 +67,23 @@ def test_winch_set_safety_down():
     robot = setup_winch_set_robot()
     winch_encoder = robot.winch_encoder
     winch_motor = robot.winch_motor
-    assert robot.winch_encoder_min() == 8
-    assert robot.winch_encoder_max() == 1170
+    assert robot.winch_encoder_min() == -8
+    assert robot.winch_encoder_max() == 1712
 
     min = robot.winch_encoder_min()
 
     # ok
-    winch_encoder.get = Mock(return_value=-(min+1))
+    winch_encoder.get = Mock(return_value=(min+1))
     robot.winch_set(-1.0)
-    assert_called_with_fuzzy(winch_motor.set, -0.5)
+    assert_called_with_fuzzy(winch_motor.set, -1.0)
 
     # out
-    winch_encoder.get = Mock(return_value=-min)
+    winch_encoder.get = Mock(return_value=min)
     robot.winch_set(-1.0)
     assert_called_with_fuzzy(winch_motor.set, 0.0)
 
     # out
-    winch_encoder.get = Mock(return_value=-(min-1))
+    winch_encoder.get = Mock(return_value=(min-1))
     robot.winch_set(-1.0)
     assert_called_with_fuzzy(winch_motor.set, 0.0)
 
@@ -95,23 +95,23 @@ def test_winch_set_safety_up():
     robot = setup_winch_set_robot()
     winch_encoder = robot.winch_encoder
     winch_motor = robot.winch_motor
-    assert robot.winch_encoder_min() == 8
-    assert robot.winch_encoder_max() == 1170
+    assert robot.winch_encoder_min() == -8
+    assert robot.winch_encoder_max() == 1712
 
     max = robot.winch_encoder_max()
 
     # ok
-    winch_encoder.get = Mock(return_value=-(max-1))
+    winch_encoder.get = Mock(return_value=(max-1))
     robot.winch_set(1.0)
-    assert_called_with_fuzzy(winch_motor.set, 0.5)
+    assert_called_with_fuzzy(winch_motor.set, 1.0)
 
     # out
-    winch_encoder.get = Mock(return_value=-max)
+    winch_encoder.get = Mock(return_value=max)
     robot.winch_set(1.0)
     assert_called_with_fuzzy(winch_motor.set, 0.0)
 
     # out
-    winch_encoder.get = Mock(return_value=-(max+1))
+    winch_encoder.get = Mock(return_value=(max+1))
     robot.winch_set(1.0)
     assert_called_with_fuzzy(winch_motor.set, 0.0)
 
