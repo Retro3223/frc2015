@@ -65,7 +65,7 @@ class Robot(wpilib.IterativeRobot):
 
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
-        self.kiwidrive.Enable()
+        #self.kiwidrive.Enable()
 
     def disabledInit(self):
         self.kiwidrive.Disable()
@@ -74,9 +74,9 @@ class Robot(wpilib.IterativeRobot):
         self.compressor.set(0)
 
     def teleopPeriodic(self):
-        self.kiwidrive.Drive()
+        self.kiwidrive.Drive_Tank()
         self.set_compressor()
-        self.drive_arm()
+        #self.drive_arm()
         self.drive_claw()
         self.drive_winch()
 

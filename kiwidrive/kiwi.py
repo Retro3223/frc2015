@@ -5,9 +5,9 @@ import xbox as joy
 try:
     import numpy as np
     M = np.array(
-        [[-1.6,  0.0],
-         [+1.0, -1.0 / math.sqrt(3)],
-         [+1.0,  1.0 / math.sqrt(3)]])
+        [[0.5,  0.0],
+         [-1.0, -1.0 / math.sqrt(3)],
+         [-1.0,  1.0 / math.sqrt(3)]])
 except ImportError:
     print("no numpy; hope you aren't trying to use kiwidrive")
 
@@ -135,7 +135,7 @@ class KiwiDrive:
     def getAngle(self):
         return int(self.gyro.pidGet())
 
-    def Drive(self):
+    def Drive_Kiwi(self):
         x = self.joy.analog_drive_x()
         y = self.joy.analog_drive_y()
         # rot is +1.0 for right trigger, -1.0 for left
@@ -151,6 +151,13 @@ class KiwiDrive:
                 x = 0.5
                 y = 0
         self.RawDrive(x, y, heading_offset, rot)
+        
+    def Drive_Tank(self):
+        x = self.joy.analog_drive_x()
+        y = self.joy.analog_drive_y()
+        # rot is +1.0 for right trigger, -1.0 for left
+        rot = self.joy.analog_rot()
+        self.tank_drive(x, y)
 
     def RawDrive(self, x, y, heading_offset, rot):
         """
@@ -189,6 +196,11 @@ class KiwiDrive:
             val += self.pid_correction
             motor.set(val)
 
+    def tank_drive(self,x,y,):
+        self.motors[0].set(0.5*x)
+        self.motors[1].set(0.5*x - y)
+        self.motors[2].set(0.5*x + y)
+            
     def pidWrite(self, output):
         self.pid_correction = output
 
