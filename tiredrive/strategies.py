@@ -1,85 +1,7 @@
 from parallel_generators import ParallelGenerators
 
-"""
-class TurnStrategy:
-
-    def __init__(self, robot):
-        self.robot = robot
-        self.robot.strategies['tote'] = self
-
-    def autonomousInit(self):
-        self.auto = parallel_generators.ParallelGenerators()
-        self.auto.add("back_left", self.turn_back_left())
-        self.auto.add("forward1", self.forward1(), after="back_left")
-        self.auto.add("brake1", self.brake1(), after="forward1")
-        self.auto.add("forward_left", self.turn_forward_left(), after="brake1")
-        self.auto.add("wait", self.wait(), after="forward_left")
-
-    def auto_tote_periodic(self):
-        for x in self.turn_back_left():
-            yield
-
-    def forward1(self):
-        for i in range(140):
-            self.robot.forward(0.5)
-            yield
-
-    def brake1(self):
-        for i in range(15):
-            self.robot.forward(-0.5)
-            yield
-
-    def wait(self):
-        while True:
-            self.robot.forward(0)
-            yield
-
-    def turn_back_left(self):
-        angle0 = self.robot.gyro.getAngle()
-        settle_count = 0
-        while True:
-            angle = self.robot.gyro.getAngle()
-            anglediff = (angle0 + 90) - angle
-            if abs(anglediff) < 3:
-                settle_count += 1
-            else:
-                settle_count = 0
-            if settle_count > 20:
-                break
-            val = -0.08 * anglediff
-            if val > 0.5:
-                val = 0.5
-            if val < -0.5:
-                val = -0.5
-            self.robot.left_motor.set(0)
-            self.robot.right_motor.set(val)
-            yield
-
-    def turn_forward_left(self):
-        angle0 = self.robot.gyro.getAngle()
-        settle_count = 0
-        while True:
-            angle = self.robot.gyro.getAngle()
-            anglediff = (angle0 - 90) - angle
-            if abs(anglediff) < 3:
-                settle_count += 1
-            else:
-                settle_count = 0
-            if settle_count > 20:
-                break
-            val = -0.08 * anglediff
-            if val > 0.5:
-                val = 0.5
-            if val < -0.5:
-                val = -0.5
-            self.robot.left_motor.set(0)
-            self.robot.right_motor.set(val)
-            yield
-"""
-
 
 class TurnStrategy:
-
     def __init__(self, robot):
         self.robot = robot
         self.robot.strategies['turn'] = self
@@ -216,13 +138,20 @@ class Auto3ToteStrategy:
 
 
 class ContainerStrategy:
-    def __init__(self, robot, over_scoring=True):
+    def __init__(self, robot, over_scoring=True, drop=True):
         self.robot = robot
-        if over_scoring:
-            self.robot.strategies['container-overwhite'] = self
-        else:
-            self.robot.strategies['container-nowhite'] = self
+        strategy_name = 'container'
         self.over_scoring = over_scoring
+        if over_scoring:
+            strategy_name += '-overwhite'
+        else:
+            strategy_name += '-nowhite'
+        self.drop = drop
+        if drop:
+            strategy_name += '-drop'
+        else:
+            strategy_name += '-nodrop'
+        self.robot.strategies[strategy_name] = self
 
     def autonomousInit(self):
         self.auto_state = "start"
@@ -273,7 +202,10 @@ class ContainerStrategy:
                                       0.01 * (robot.get_winch_revs() - 500))
             else:
                 self.positioned_count = 0
-                self.auto_state = "setdown"
+                if self.drop:
+                    self.auto_state = "setdown"
+                else:
+                    self.auto_state = 'finished'
 
         # state "setdown": set container down
         if self.auto_state == "setdown":

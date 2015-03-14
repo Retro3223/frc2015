@@ -1,5 +1,5 @@
 import wpilib
-from strategies import Auto3ToteStrategy, TurnStrategy, ContainerStrategy
+from strategies import ContainerStrategy
 
 
 def step(value, min_val):
@@ -71,7 +71,7 @@ class Robot(wpilib.IterativeRobot):
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(3)
-        self.arm_power = Smooth(0.0, 0.05)
+        self.arm_power = 0  # Smooth(0.0, 0.1)
 
         # Initialize the accelerometer
         self.accel = wpilib.BuiltInAccelerometer()
@@ -113,15 +113,15 @@ class Robot(wpilib.IterativeRobot):
         self.dog.setSafetyEnabled(False)
 
         self.strategies = {}
-        Auto3ToteStrategy(self)
-        TurnStrategy(self)
         ContainerStrategy(self, True)
         ContainerStrategy(self, False)
+        ContainerStrategy(self, True, drop=False)
+        ContainerStrategy(self, False, drop=False)
         # Select which autonomous mode:
-        # * "tote"
-        # * "container-overwhite"
-        # * "container-nowhite"
-        # * "3-tote"
+        # * "container-overwhite-drop"
+        # * "container-nowhite-drop"
+        # * "container-overwhite-nodrop"
+        # * "container-nowhite-nodrop"
         self.chooser = wpilib.SendableChooser()
         for auto_mode in self.strategies.keys():
             self.chooser.addObject(auto_mode, auto_mode)
@@ -131,7 +131,6 @@ class Robot(wpilib.IterativeRobot):
     # Autonomous Mode
     def autonomousInit(self):
         self.auto_mode = self.chooser.getSelected()
-        self.auto_mode = "container-overwhite"
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
@@ -177,7 +176,7 @@ class Robot(wpilib.IterativeRobot):
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
         self.raising_winch = False
-        self.maxing_winch = False
+        self.minning_winch = False
         self.compressor.start()
 
     def brake_on(self):
@@ -200,50 +199,82 @@ class Robot(wpilib.IterativeRobot):
         # Feed joystick values into drive system
         self.robotdrive.tankDrive(left_wheel, right_wheel)
 
+        self.do_winch()
+        self.trevor_arm()
+
+        self.claw_notoggle(default_up=True)
+        # self.claw_toggle()
+
+        # If the right joystick slider is down, also run test mode
+        if self.right_joystick.getRawAxis(2) > .5:
+            self.test_mode()
+
+    def do_winch(self):
         # Raise winch subroutine
         if self.right_joystick.getRawButton(5):
             self.raising_winch = True
         if self.right_joystick.getRawButton(4):
-            self.maxing_winch = True
+            self.minning_winch = True
         # Keeps raising winch while other teleop occurs
         if self.raising_winch:
-            print ('raising winch: ', self.get_winch_revs())
             if self.get_winch_revs() < 328:
                 self.winch_set(1.4)
             else:
                 self.raising_winch = False
-        elif self.maxing_winch:
-            if self.get_winch_revs() < self.winch_encoder_max():
-                self.winch_set(1.4)
+        elif self.minning_winch:
+            if self.get_winch_revs() > self.winch_encoder_min():
+                self.winch_set(-1.4)
             else:
-                self.maxing_winch = False
+                self.minning_winch = False
         else:
             # Feed winch controller raw values from the joystick
             # Right joystick button 3 raises winch, button 2 lowers winch
-            winch_signal = self.right_joystick.getRawButton(3) + \
+            winch_signal = 1.8 * self.right_joystick.getRawButton(3) + \
                 -self.right_joystick.getRawButton(2)
             # Right joystick button 6 overrides encoder,
             # button 7 resets encoder
             self.winch_set(winch_signal)
 
-        # Feed arm controller raw values from the joystick
-        # Left joystick button 3 goes forward, 2 goes backward
+    def trevor_arm(self):
+        """
+        Feed arm controller raw values from the joystick
+        Left joystick button 3 goes forward, 2 goes backward
+        """
         arm_signal = self.left_joystick.getRawButton(3) + \
             -self.left_joystick.getRawButton(2)
-        val = self.arm_power.set(arm_signal)
+        val = 0.9 * arm_signal  # self.arm_power.set(0.9 * arm_signal)
         self.arm_motor.set(0.5 * val)
 
-        # Handle piston in and out
-        # Right joystick trigger button toggles claw in or out
-        if self.right_joystick.getRawButton(1):
-            self.claw_up()
+    def claw_notoggle(self, default_up=True):
+        """
+        Handle piston in and out
+        Claw is in default state unless Right joystick trigger button pressed
+        """
+        if default_up:
+            pressed_action = self.claw_up
+            default_action = self.claw_down
         else:
-            self.claw_down()
+            pressed_action = self.claw_down
+            default_action = self.claw_up
+
+        if self.right_joystick.getRawButton(1):
+            pressed_action()
+        else:
+            default_action()
         self.set_claw()
 
-        # If the right joystick slider is down, also run test mode
-        if self.right_joystick.getRawAxis(2) > .5:
-            self.test_mode()
+    def claw_toggle(self):
+        """
+        Handle piston in and out
+        Right joystick trigger button toggles claw in or out
+        toggle
+        """
+        if self.right_joystick.getRawButton(1):
+            self.claw_toggle = True
+        elif self.claw_toggle:
+            self.claw_toggle = False
+            self.claw_state = not self.claw_state
+            self.set_claw()
 
     # Robotpy's broken test mode
     def testPeriodic(self):
@@ -302,7 +333,7 @@ class Robot(wpilib.IterativeRobot):
 
         if self.left_joystick.getRawButton(2) or \
                 self.left_joystick.getRawButton(3):
-            print('arm power: ', self.arm_power.value)
+            print('arm power: ', self.arm_power)  # .value)
 
     # Disabled Mode
     def disabledPeriodic(self):

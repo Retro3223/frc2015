@@ -151,10 +151,12 @@ class KiwiDrive:
                 x = 0.5
                 y = 0
         self.RawDrive(x, y, heading_offset, rot)
-        
+
     def Drive_Tank(self):
         x = self.joy.analog_drive_x()
+        x = step(x, 0.2)
         y = self.joy.analog_drive_y()
+        y = step(y, 0.2)
         # rot is +1.0 for right trigger, -1.0 for left
         rot = self.joy.analog_rot()
         self.tank_drive(x, y)
@@ -200,9 +202,8 @@ class KiwiDrive:
         self.motors[0].set(0.5*x)
         self.motors[1].set(0.5*x - y)
         self.motors[2].set(0.5*x + y)
-            
+
     def pidWrite(self, output):
-        print("pid output: ", output)
         self.pid_correction = output
 
     def brake_rotation(self):

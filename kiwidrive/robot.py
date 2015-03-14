@@ -18,8 +18,7 @@ class Robot(wpilib.IterativeRobot):
 
         self.pressure_switch = wpilib.DigitalInput(8)
         self.compressor = wpilib.DigitalOutput(3)
-        self.solenoid1 = wpilib.Solenoid(6)
-        self.solenoid2 = wpilib.Solenoid(7)
+        self.claw_relay = wpilib.Relay(0)
 
         # Initialize the arm motor
         self.arm_motor = wpilib.Talon(6)
@@ -91,7 +90,7 @@ class Robot(wpilib.IterativeRobot):
         elif psv == 0:
             self.compressor.set(1)
         else:
-            print ("badurk?")
+            print("badurk?")
 
     def testPeriodic(self):
         pass
@@ -137,8 +136,7 @@ class Robot(wpilib.IterativeRobot):
         """
         # Moves claw into "claw_state" position
         """
-        self.solenoid1.set(self.claw_state)
-        self.solenoid2.set(self.claw_state)
+        self.claw_relay.set(2 if self.claw_state else 3)
 
     def test_mode(self):
         """
