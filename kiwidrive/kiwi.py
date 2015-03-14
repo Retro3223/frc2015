@@ -71,14 +71,14 @@ class Smooth:
 
 
 class KiwiDrive:
-    def __init__(self, robot, joystick, motors):
+    def __init__(self, robot, joy, motors):
         """
         Initialize all of the sensors and controllers on the robot
         """
 
         # Initialize the Joystick
         self.robot = robot
-        self.joy = joy.XboxController(joystick)
+        self.joy = joy
 
         # Initialize the drive motors
         assert len(motors) == 3

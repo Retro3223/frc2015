@@ -112,3 +112,50 @@ class XboxController:
 
     def d_pad(self):
         return self.joystick.getPOV()
+
+
+class TwinJoystickController:
+    def __init__(self, right_joystick, left_joystick):
+        self.right_joystick = right_joystick
+        self.left_joystick = right_joystick
+
+    def analog_drive_x(self):
+        return self.left_joystick.getRawAxis(0)
+
+    def analog_drive_y(self):
+        return self.left_joystick.getRawAxis(1)
+
+    def analog_rot(self):
+        return 0;
+
+    def analog_winch(self):
+        return 1.8 * self.right_joystick.getRawButton(3) + \
+                -self.right_joystick.getRawButton(2)
+
+    def analog_arm(self):
+        return self.left_joystick.getRawButton(3) + \
+            -self.left_joystick.getRawButton(2)
+
+    def digital_claw(self):
+        return self.right_joystick.getRawButton(1)
+
+    def digital_test(self):
+        return self.right_joystick.getRawAxis(2) > .5
+
+    def show_limit_switches(self):
+        return self.left_joystick.getRawButton(4)
+
+    def show_winch_encoder(self):
+        return self.right_joystick.getRawButton(6)
+
+    def show_gyro(self):
+        return self.left_joystick.getRawButton(8)
+
+    def show_arm(self):
+        return self.right_joystick.getRawButton(4)
+
+    def digital_winch_encoder_reset(self):
+        return self.right_joystick.getRawButton(7)
+
+    def digital_winch_override(self):
+        return self.right_joystick.getRawButton(6)

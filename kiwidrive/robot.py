@@ -1,17 +1,20 @@
 import wpilib
 import kiwi
 import strategies as strats
+import xbox as joy
 
 
 class Robot(wpilib.IterativeRobot):
     def robotInit(self):
         self.joystick1 = wpilib.Joystick(0)
+        self.joystick2 = wpilib.Joystick(1)
         self.motor1 = wpilib.Talon(0)
         self.motor2 = wpilib.Talon(1)
         self.motor3 = wpilib.Talon(2)
+        self.joy = joy.TwinJoystickController(self.joystick1, self.joystick2)
         self.kiwidrive = kiwi.KiwiDrive(
             self,
-            self.joystick1,
+            self.joy,
             [self.motor1,
              self.motor2,
              self.motor3])
@@ -130,7 +133,7 @@ class Robot(wpilib.IterativeRobot):
         return self._winch_encoder_min
 
     def winch_encoder_max(self):
-        return self._winch_encoder_min + 1720
+        return self._winch_encoder_min + 1720 + 190
 
     def set_claw(self):
         """
