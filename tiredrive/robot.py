@@ -100,7 +100,7 @@ class Robot(wpilib.IterativeRobot):
         self.brake_solenoid2 = wpilib.Solenoid(5)
 
         self.claw_state = True
-        self.claw_toggle = False
+        self._claw_toggle = False
 
         # Initialize the limit switches
         self.left_limit_switch = wpilib.DigitalInput(6)
@@ -130,7 +130,7 @@ class Robot(wpilib.IterativeRobot):
 
     # Autonomous Mode
     def autonomousInit(self):
-        self.auto_mode = self.chooser.getSelected()
+        self.auto_mode = "container-overwhite-nodrop"
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
@@ -202,8 +202,8 @@ class Robot(wpilib.IterativeRobot):
         self.do_winch()
         self.trevor_arm()
 
-        self.claw_notoggle(default_up=True)
-        # self.claw_toggle()
+        # self.claw_notoggle(default_up=True)
+        self.claw_toggle()
 
         # If the right joystick slider is down, also run test mode
         if self.right_joystick.getRawAxis(2) > .5:
@@ -243,7 +243,7 @@ class Robot(wpilib.IterativeRobot):
         arm_signal = self.left_joystick.getRawButton(3) + \
             -self.left_joystick.getRawButton(2)
         val = 0.9 * arm_signal  # self.arm_power.set(0.9 * arm_signal)
-        self.arm_motor.set(0.5 * val)
+        self.arm_motor.set(-0.5 * val)
 
     def claw_notoggle(self, default_up=True):
         """
@@ -270,9 +270,9 @@ class Robot(wpilib.IterativeRobot):
         toggle
         """
         if self.right_joystick.getRawButton(1):
-            self.claw_toggle = True
-        elif self.claw_toggle:
-            self.claw_toggle = False
+            self._claw_toggle = True
+        elif self._claw_toggle:
+            self._claw_toggle = False
             self.claw_state = not self.claw_state
             self.set_claw()
 

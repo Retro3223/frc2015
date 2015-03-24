@@ -194,7 +194,7 @@ class ContainerStrategy:
             if self.over_scoring:
                 count = 150
             else:
-                count = 120
+                count = 90
             if self.positioned_count < count:
                 robot.forward(-.6)
                 self.positioned_count += 1
