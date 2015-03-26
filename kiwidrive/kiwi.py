@@ -5,9 +5,9 @@ import xbox as joy
 try:
     import numpy as np
     M = np.array(
-        [[0.5,  0.0],
-         [-1.0, -1.0 / math.sqrt(3)],
-         [-1.0,  1.0 / math.sqrt(3)]])
+        [[-1.6,  0.0],
+         [+1.0, -1.0 / math.sqrt(3)],
+         [+1.0,  1.0 / math.sqrt(3)]])
 except ImportError:
     print("no numpy; hope you aren't trying to use kiwidrive")
 
