@@ -68,7 +68,7 @@ def test_winch_set_safety_down():
     winch_encoder = robot.winch_encoder
     winch_motor = robot.winch_motor
     assert robot.winch_encoder_min() == -8
-    assert robot.winch_encoder_max() == 1712
+    assert robot.winch_encoder_max() == 1902
 
     min = robot.winch_encoder_min()
 
@@ -96,7 +96,7 @@ def test_winch_set_safety_up():
     winch_encoder = robot.winch_encoder
     winch_motor = robot.winch_motor
     assert robot.winch_encoder_min() == -8
-    assert robot.winch_encoder_max() == 1712
+    assert robot.winch_encoder_max() == 1902
 
     max = robot.winch_encoder_max()
 
