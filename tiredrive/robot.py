@@ -130,7 +130,7 @@ class Robot(wpilib.IterativeRobot):
 
     # Autonomous Mode
     def autonomousInit(self):
-        self.auto_mode = "container-overwhite-nodrop"
+        self.auto_mode = self.chooser.getSelected()
         assert self.auto_mode in self.strategies
         self.compressor.start()
         self.winch_setpoint_zero = self.winch_setpoint = self.get_winch_revs()
