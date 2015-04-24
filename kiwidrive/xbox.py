@@ -30,16 +30,19 @@ class XboxController:
         return self.joystick.getRawAxis(XboxController.JOY_STICK_L_Y)
 
     def analog_rot(self):
-        return self.joystick.getRawButton(XboxController.BUTTON_BUMP_RIGHT) -\
-               self.joystick.getRawButton(XboxController.BUTTON_BUMP_LEFT)
+        return \
+            self.joystick.getRawButton(XboxController.BUTTON_BUMP_RIGHT) -\
+            self.joystick.getRawButton(XboxController.BUTTON_BUMP_LEFT)
 
     def analog_winch(self):
-        return self.joystick.getRawAxis(XboxController.JOY_TRIG_R) -\
-               self.joystick.getRawAxis(XboxController.JOY_TRIG_L)
+        return \
+            self.joystick.getRawAxis(XboxController.JOY_TRIG_R) -\
+            self.joystick.getRawAxis(XboxController.JOY_TRIG_L)
 
     def analog_arm(self):
-        return self.joystick.getRawButton(XboxController.BUTTON_Y) -\
-               self.joystick.getRawButton(XboxController.BUTTON_B)
+        return \
+            self.joystick.getRawButton(XboxController.BUTTON_Y) -\
+            self.joystick.getRawButton(XboxController.BUTTON_B)
 
     def digital_test(self):
         return self.joystick.getRawButton(XboxController.BUTTON_BACK)
@@ -126,11 +129,11 @@ class TwinJoystickController:
         return self.left_joystick.getRawAxis(1)
 
     def analog_rot(self):
-        return 0;
+        return 0
 
     def analog_winch(self):
         return 1.8 * self.right_joystick.getRawButton(3) + \
-                -self.right_joystick.getRawButton(2)
+            -self.right_joystick.getRawButton(2)
 
     def analog_arm(self):
         return self.left_joystick.getRawButton(3) + \

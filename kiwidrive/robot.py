@@ -7,11 +7,10 @@ import xbox as joy
 class Robot(wpilib.IterativeRobot):
     def robotInit(self):
         self.joystick1 = wpilib.Joystick(0)
-        self.joystick2 = wpilib.Joystick(1)
+        self.joy = joy.XboxController(self.joystick1)
         self.motor1 = wpilib.Talon(0)
         self.motor2 = wpilib.Talon(1)
         self.motor3 = wpilib.Talon(2)
-        self.joy = joy.TwinJoystickController(self.joystick1, self.joystick2)
         self.kiwidrive = kiwi.KiwiDrive(
             self,
             self.joy,
@@ -67,7 +66,7 @@ class Robot(wpilib.IterativeRobot):
 
     def teleopInit(self):
         self.winch_setpoint = self.get_winch_revs()
-        #self.kiwidrive.Enable()
+        self.kiwidrive.Enable()
 
     def disabledInit(self):
         self.kiwidrive.Disable()
@@ -76,9 +75,9 @@ class Robot(wpilib.IterativeRobot):
         self.compressor.set(0)
 
     def teleopPeriodic(self):
-        self.kiwidrive.Drive_Tank()
+        self.kiwidrive.Drive_Kiwi()
         self.set_compressor()
-        #self.drive_arm()
+        self.drive_arm()
         self.drive_claw()
         self.drive_winch()
 
@@ -133,7 +132,7 @@ class Robot(wpilib.IterativeRobot):
         return self._winch_encoder_min
 
     def winch_encoder_max(self):
-        return self._winch_encoder_min + 1720 + 190
+        return self._winch_encoder_min + 1910
 
     def set_claw(self):
         """
