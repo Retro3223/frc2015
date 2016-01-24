@@ -81,7 +81,7 @@ class Robot(wpilib.IterativeRobot):
         self.a_y_count = 0
 
         # Initialize the gyro
-        self.gyro = wpilib.Gyro(0)
+        self.gyro = wpilib.AnalogGyro(0)
 
         # Initialize the winch encoder
         self.winch_encoder = wpilib.Encoder(1, 2)
